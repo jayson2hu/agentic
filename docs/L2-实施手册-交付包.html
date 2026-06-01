@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L2 判断与智能体 · 实施手册（交付包）</title>
+<style>
+  :root{--bg:#f5f8fe;--card:#fff;--ink:#13203a;--muted:#51607a;--dim:#8492ad;--line:#dfe6f3;--acc:#2563eb;--acc2:#1d4ed8;--soft:#e8eefe;--green:#0d9488;--gsoft:#e6f9f3;--blue:#2563eb;--bsoft:#e9f0fe;--amber:#c2730a;--asoft:#fff6e8;--violet:#7c3aed}
+  *{box-sizing:border-box}html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.7;font-size:14.5px}
+  a{color:var(--acc)}.wrap{display:grid;grid-template-columns:250px 1fr;max-width:1300px;margin:0 auto}
+  nav{position:sticky;top:0;height:100vh;overflow-y:auto;padding:22px 13px;border-right:1px solid var(--line);background:#fff}
+  nav .bk{display:inline-block;font-size:10px;font-weight:800;letter-spacing:1px;color:#fff;background:var(--acc);padding:3px 9px;border-radius:6px;margin-bottom:7px}
+  nav .brand{font-weight:800;font-size:14.5px}nav .sub{color:var(--dim);font-size:11px;margin-bottom:12px}
+  nav a{display:block;color:var(--muted);padding:5px 10px;border-radius:7px;font-size:12.3px}nav a:hover{background:var(--soft);color:var(--acc2);text-decoration:none}
+  nav .grp{color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin:12px 0 2px 10px}
+  main{padding:36px 50px 110px;min-width:0}
+  .tag{display:inline-block;background:var(--soft);color:var(--acc2);border:1px solid #c3d4fb;padding:4px 12px;border-radius:999px;font-size:12.5px;font-weight:700;margin-bottom:12px}
+  h1{font-size:28px;line-height:1.25;margin:0 0 10px;font-weight:800}h1 em{font-style:normal;color:var(--acc)}
+  .lede{color:var(--muted);font-size:15.5px;max-width:830px}
+  .meta{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.mt{background:#fff;border:1px solid var(--line);border-radius:8px;padding:5px 11px;font-size:11.5px;color:var(--muted)}.mt b{color:var(--ink)}
+  section{margin:34px 0;scroll-margin-top:12px}
+  h2{font-size:20px;margin:0 0 6px;font-weight:800;display:flex;align-items:center;gap:10px;padding-bottom:7px;border-bottom:2px solid var(--line)}
+  h2 .x{background:var(--acc);color:#fff;min-width:25px;height:25px;padding:0 6px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0}
+  h3{font-size:15px;margin:18px 0 7px}.note{color:var(--dim);font-size:12.3px;margin-bottom:12px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:12px 0;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:12.4px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th,td{padding:8px 11px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}th{background:#e8effb;color:var(--ink);font-weight:700}td{color:var(--muted)}tr:last-child td{border-bottom:none}td strong{color:var(--ink)}
+  ul.clean{margin:7px 0;padding-left:18px}ul.clean li{margin:3px 0;color:var(--muted)}ul.clean li strong{color:var(--ink)}
+  code{background:#eef2f5;padding:1.5px 6px;border-radius:5px;font-size:12px;color:var(--violet);font-family:Consolas,monospace}
+  pre{background:#0e1a30;border:1px solid var(--line);border-radius:11px;padding:14px 16px;overflow-x:auto;font-size:11.6px;line-height:1.5;color:#c3d2ea;margin:11px 0}
+  pre .c{color:#6378a0}pre .k{color:#93c5fd}pre .s{color:#6ee7b7}pre .y{color:#fcd34d}pre .t{color:#c4b5fd}
+  .box{border-radius:9px;padding:10px 13px;margin:6px 0;font-size:12.6px}.box.acc{background:var(--gsoft);border:1px solid #aee6d8}.box.acc b{color:#0f766e}
+  .callout{border-left:4px solid var(--acc);background:var(--soft);padding:11px 15px;border-radius:0 10px 10px 0;margin:12px 0;color:var(--muted)}.callout.amber{border-color:var(--amber);background:var(--asoft)}.callout.green{border-color:var(--green);background:var(--gsoft)}.callout b{color:var(--ink)}
+  .chk{list-style:none;padding:0;margin:8px 0}.chk li{padding:6px 0 6px 28px;position:relative;border-bottom:1px solid var(--line);font-size:12.7px;color:var(--muted)}.chk li:last-child{border-bottom:none}
+  .chk li::before{content:"☐";position:absolute;left:3px;top:5px;color:var(--acc);font-size:15px}.chk li b{color:var(--ink)}.chk .fid{display:inline-block;font-size:10px;font-weight:800;color:var(--acc2);background:#eaf0fe;border:1px solid #c3d4fb;padding:0 6px;border-radius:5px;margin-right:6px}
+  .done{display:inline-block;font-size:10px;font-weight:800;padding:2px 8px;border-radius:5px;background:var(--gsoft);color:#0f766e}
+  .prompt{background:#0e1a30;border:1px solid #2a3d5e;border-radius:12px;padding:16px 18px;margin:12px 0;color:#dce6f5;font-size:12.6px;line-height:1.65;white-space:pre-wrap;font-family:Consolas,monospace}
+  .prompt .h{color:#93c5fd;font-weight:800}
+  .foot{margin-top:46px;padding-top:16px;border-top:1px solid var(--line);color:var(--dim);font-size:12px}
+  @media(max-width:980px){.wrap{grid-template-columns:1fr}nav{display:none}main{padding:22px 14px 60px}.grid2{grid-template-columns:1fr}h1{font-size:22px}}
+  @media print{nav{display:none}.wrap{grid-template-columns:1fr}body{background:#fff}main{padding:0}.card{box-shadow:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <span class="bk">LAYER 2</span>
+    <div class="brand">判断与智能体 · 实施手册</div>
+    <div class="sub">交付包 · ready-to-build</div>
+    <a href="#status">完成度总览</a>
+    <a href="#deliverables">L2 交付物清单</a>
+    <a href="#standalone">独立开发说明</a>
+    <a href="#scaffold">① 仓库脚手架</a>
+    <a href="#contracts">② 接口契约</a>
+    <a href="#graph">③ 图规格</a>
+    <a href="#config">④ 配置清单</a>
+    <a href="#checklist">⑤ 执行清单</a>
+    <a href="#smoke">⑥ 冒烟自检</a>
+    <a href="#dod">⑦ 完成判定</a>
+    <a href="#prompt">★ Codex 提示词</a>
+  </nav>
+  <main>
+    <span class="tag">L2 实施手册 · 含 Codex 提示词</span>
+    <h1>L2 判断与智能体 — <em>实施手册（交付包）</em></h1>
+    <p class="lede">把 L2 补齐到执行级：脚手架、接口契约、图规格、配置、执行清单、冒烟自检，并附<b>可直接复制给 Codex 的提示词</b>。L2 可对 L1 stub 独立开发。</p>
+    <div class="meta"><span class="mt">独立开发：<b>L1 stub + FakeLLM</b></span><span class="mt">栈：<b>Python · LangGraph · PG/pgvector</b></span></div>
+
+    <section id="status">
+      <h2><span class="x">✓</span>完成度总览</h2>
+      <div class="card"><table>
+        <thead><tr><th>交付物</th><th>状态</th></tr></thead>
+        <tbody>
+          <tr><td>L2-判断与智能体-产品文档.html</td><td><span class="done">完成</span></td></tr>
+          <tr><td>L2-判断与智能体-架构设计.html</td><td><span class="done">完成</span></td></tr>
+          <tr><td>L2-开发Plan-详尽版.html</td><td><span class="done">完成</span></td></tr>
+          <tr><td><strong>L2-实施手册-交付包.html</strong>（本文）</td><td><span class="done">完成</span></td></tr>
+        </tbody>
+      </table></div>
+    </section>
+
+    <section id="deliverables">
+      <h2><span class="x">▤</span>L2 交付物清单（4 份 → 文件夹 <code>L2-判断与智能体/</code>）</h2>
+      <ul class="clean">
+        <li><strong>L2-判断与智能体-产品文档.html</strong></li>
+        <li><strong>L2-判断与智能体-架构设计.html</strong></li>
+        <li><strong>L2-开发Plan-详尽版.html</strong></li>
+        <li><strong>L2-实施手册-交付包.html</strong>（本文，含 Codex 提示词）</li>
+      </ul>
+    </section>
+
+    <section id="standalone">
+      <h2><span class="x">⇄</span>独立开发说明</h2>
+      <div class="callout amber"><b>L2 不依赖 L1 完成。</b>取 base_analysis 经 <code>AnalysisProvider</code>；开发期注入 <b>StubAnalysisProvider</b>（fixtures）+ <b>FakeLLM</b>。集成期换成真 L1，接平台事件总线，合并迁移。<b>输出契约（vertical_scores/translations + content.completed）冻结</b>，L3 直接消费。</div>
+    </section>
+
+    <section id="scaffold">
+      <h2><span class="x">1</span>仓库脚手架</h2>
+      <pre><span class="k">packages/judgment_graph/</span>
+  judgment_graph/
+    lens/ loader.py            <span class="c"># 按 vertical_code 加载 rubric/taxonomy/filter</span>
+    graph/
+      scoring.py              <span class="c"># relevance_gate→score_6dim→tag→reflect→refine</span>
+      translate.py            <span class="c"># identify_terms→translate→check→refine</span>
+      recommend.py companion.py
+      state.py build.py
+    input/ provider.py stub.py  <span class="c"># AnalysisProvider + Stub</span>
+    persist/ repository.py contracts.py
+    review/ queue.py
+    events/ consume.py emit.py
+    scripts/ smoke.py
+  tests/ unit/ graph/ fixtures/{analysis,llm} golden/
+<span class="k">workers/scoring/</span> worker.py   <span class="c"># Arq: score(content_id)</span></pre>
+    </section>
+
+    <section id="contracts">
+      <h2><span class="x">2</span>接口契约（关键签名）</h2>
+      <pre><span class="c"># 输入（解耦 L1）</span>
+<span class="k">class</span> <span class="t">AnalysisProvider</span>(Protocol):
+    <span class="k">def</span> get(self, content_id: int) -> BaseAnalysis: ...   <span class="c"># summary/key_points/entities/embedding</span>
+<span class="k">class</span> <span class="t">StubAnalysisProvider</span>: ...   <span class="c"># 读 fixtures</span>
+
+<span class="c"># lens</span>
+<span class="k">class</span> <span class="t">Lens</span>: code; rubric_prompt; rubric_version; tag_taxonomy; source_filter; model_profile
+<span class="k">def</span> load_lens(vertical_code: str) -> Lens
+
+<span class="c"># 评分图状态与产物</span>
+<span class="k">class</span> <span class="t">VerticalScore</span>(BaseModel):
+    content_id: int; vertical_code: str; relevance: int
+    dim_scores: dict   <span class="c"># topic/content/depth/practical/novelty/expression</span>
+    vertical_tags: list[str]; quality_score: int; rubric_version: str
+
+<span class="c"># 输出契约（给 L3，冻结）</span>
+<span class="k">def</span> persist_score(s: VerticalScore) -> None              <span class="c"># upsert (content,vertical)</span>
+<span class="k">def</span> persist_translation(content_id, lang, fields) -> None
+<span class="k">def</span> emit_completed(session, content_id) -> None           <span class="c"># outbox: content.completed</span>
+<span class="c"># 请求时</span>
+<span class="k">def</span> recommend(user_id: int, vertical: str, limit: int) -> list[ContentRef]
+<span class="k">def</span> companion(content_id: int, question: str) -> Iterator[str]   <span class="c"># SSE</span></pre>
+      <div class="callout green"><b>冻结点：</b><code>VerticalScore</code> / <code>content_translations</code> / <code>content.completed</code> 是 L3 唯一依赖。定死即可并行 + 统一。</div>
+    </section>
+
+    <section id="graph">
+      <h2><span class="x">3</span>图规格</h2>
+      <pre><span class="s">scoring_graph(vertical)</span>: relevance_gate→score_6dim(注入rubric)→vertical_tag→reflect_check→refine→persist→(review_queue?)→emit
+<span class="s">translate_graph(target_lang)</span>: identify_terms→translate→check→refine→persist
+<span class="s">companion_graph</span>: load(base+text)→retrieve→answer(SSE)
+档位: score/translate=<span class="y">standard</span>; relevance_gate=<span class="y">cheap</span>
+缓存: (content_id, vertical, rubric_version)</pre>
+    </section>
+
+    <section id="config">
+      <h2><span class="x">4</span>配置清单（.env 追加）</h2>
+      <pre>L2_DEFAULT_VERTICAL=ai-coding
+L2_RUBRIC_VERSION=aic-v1
+L2_REVIEW_LOWCONF_BAND=10        <span class="c"># 评分边界进精审</span>
+L2_RECO_VECTOR_ENABLED=true
+L2_USE_FAKE_LLM=false</pre>
+    </section>
+
+    <section id="checklist">
+      <h2><span class="x">5</span>执行清单（按 Sprint）</h2>
+      <h3>S1 骨架+lens</h3>
+      <ul class="chk"><li><span class="fid">F0.1-0.3</span> 包/worker/LLM/底座/迁移</li><li><span class="fid">F1.1-1.3</span> AnalysisProvider + L1 stub + 消费事件</li><li><span class="fid">F2.1-2.3</span> lens 加载 + ai-coding seed + relevance_gate</li></ul>
+      <h3>S2 评分+翻译</h3>
+      <ul class="chk"><li><span class="fid">F3.1-3.4</span> 六维评分 + 标签 + 反思 + 优化</li><li><span class="fid">F4.1-4.2</span> 术语识别 + 三段翻译</li></ul>
+      <h3>S3 精审+产物</h3>
+      <ul class="chk"><li><span class="fid">F5.1-5.2</span> review_queue + 裁决校准</li><li><span class="fid">F8.1-8.3</span> 写 scores/translations + 状态 + content.completed</li></ul>
+      <h3>S4 推荐+伴读+成本</h3>
+      <ul class="chk"><li><span class="fid">F6.1-6.3</span> 召回 + 重排 + 兴趣向量</li><li><span class="fid">F7.1-7.2</span> 伴读 SSE + 配额接口</li><li><span class="fid">F9.1-9.2</span> 重评 + 成本</li></ul>
+    </section>
+
+    <section id="smoke">
+      <h2><span class="x">6</span>冒烟自检（FakeLLM）</h2>
+      <pre><span class="c"># make l2-smoke</span>
+1. Stub 提供 base_analysis(AI Coding 文章) → score(cid, vertical=ai-coding)
+2. assert content_vertical_scores(cid,ai-coding) 六维分合法
+3. assert content_translations(cid) 中英两行
+4. assert status==COMPLETED（高置信）/ 入 review_queue（低置信样本）
+5. assert outbox 有 content.completed
+6. recommend(user) 返回非空且排序确定；companion 流式返回
+7. print "L2 PIPELINE: PASS"</pre>
+      <div class="box acc"><b>✓ 验收</b> <code>make l2-smoke</code> 输出 <code>L2 PIPELINE: PASS</code>。</div>
+    </section>
+
+    <section id="dod">
+      <h2><span class="x">7</span>完成判定（L2 DoD）</h2>
+      <ul class="chk">
+        <li>用 L1 stub + FakeLLM 独立跑通验收</li>
+        <li>六维评分合法 + 反思优化 + 与精审一致性达标</li>
+        <li>中英翻译完整自然、术语一致</li>
+        <li>精审闭环：低置信入队、裁决推进、可校准</li>
+        <li>推荐两路召回+重排；伴读基于内容流式</li>
+        <li>产物契约完整；content.completed 不丢不重；状态正确</li>
+        <li>成本可控可重评；CI 全绿（不真调模型）</li>
+      </ul>
+    </section>
+
+    <section id="prompt">
+      <h2><span class="x">★</span>Codex 提示词（复制即用）</h2>
+      <p class="note">把 L2 的 4 份文档放进 <code>L2-判断与智能体/</code>，连同下面这段提示词一起交给 Codex。</p>
+      <div class="prompt"><span class="h"># 角色</span>
+你是资深 Python/LangGraph 工程师，负责独立实现 CodePick 平台的 L2「判断与智能体」服务。
+
+<span class="h"># 输入材料（同目录 4 份 HTML，先全部读完）</span>
+- L2-判断与智能体-产品文档.html   —— 目标、边界、产物契约
+- L2-判断与智能体-架构设计.html   —— 垂直 lens、评分/翻译/推荐/伴读图
+- L2-开发Plan-详尽版.html         —— EPIC/Feature 拆解 + 每项验收 + 自测（实现依据）
+- L2-实施手册-交付包.html         —— 脚手架、接口契约、图规格、配置、冒烟
+
+<span class="h"># 任务</span>
+按《开发Plan》的 EPIC E0→E9、Feature 顺序实现 L2，逐个用其「验收标准」+「自测」收口。
+按《实施手册》的仓库脚手架、接口契约（不可改签名）、LangGraph 图规格、配置项落地。
+
+<span class="h"># 硬约束</span>
+1. 独立开发：取 base_analysis 只经 AnalysisProvider，注入 StubAnalysisProvider + fixtures；LLM 用 FakeLLM。**不依赖真 L1、不真调模型。**
+2. 冻结契约不可改：VerticalScore schema、content_translations、事件 content.completed、表归属（只写 vertical_scores/translations/review_queue，只读 content_items/content_base_analysis）。
+3. 判断标准走 verticals.lens 配置（rubric/taxonomy/source_filter），不要硬编码到代码。
+4. 所有 LLM 节点必须可用 FakeLLM 确定性测试；CI 不真调模型、不花钱。
+5. 技术栈：Python 3.12 / LangGraph / SQLAlchemy+Alembic / PostgreSQL+pgvector / Arq。依赖方向：judgment_graph 不得 import L3，对 L1 仅经 provider 接口。
+
+<span class="h"># 交付标准（DoD）</span>
+- 每个 Feature 通过其「自测」；每个 Sprint 末 `make l2-smoke` 输出 "L2 PIPELINE: PASS"。
+- 单元 + 图测试覆盖率 ≥ 80%，ruff/mypy/CI 全绿。
+- 满足《实施手册》第 7 节 L2 DoD 全部条目。
+- 产出：可运行代码 + 测试 + 迁移 + README（含运行/测试命令）。
+
+<span class="h"># 工作方式</span>
+每完成一个 Sprint 提交一次，附：已实现 Feature 列表、自测结果、覆盖率、遗留项。遇到契约层面的歧义先停下并提问，不要擅自改冻结契约。</div>
+    </section>
+
+    <div class="foot">L2 判断与智能体 · 实施手册（交付包）· 含 Codex 提示词 · 可对 L1 stub 独立开发 · CodePick 分层平台 · 2026-05-30</div>
+  </main>
+</div>
+</body>
+</html>

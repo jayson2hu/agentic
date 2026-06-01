@@ -1,0 +1,101 @@
+name: L2 Judgment
+
+on:
+  push:
+    paths:
+      - "packages/judgment_graph/**"
+      - "db/alembic/**"
+      - "docs/**"
+      - "pyproject.toml"
+      - "Makefile"
+      - "README.md"
+      - ".github/workflows/l2.yml"
+  pull_request:
+    paths:
+      - "packages/judgment_graph/**"
+      - "db/alembic/**"
+      - "docs/**"
+      - "pyproject.toml"
+      - "Makefile"
+      - "README.md"
+      - ".github/workflows/l2.yml"
+  workflow_dispatch:
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Test
+        run: make test
+      - name: Lint
+        run: make lint
+      - name: Typecheck
+        run: make typecheck
+      - name: Smoke
+        run: make l2-smoke
+      - name: Feature self-test matrix
+        run: make l2-feature-matrix
+      - name: Contract audit
+        run: |
+          make l2-contracts
+          make l2-audit
+      - name: Alembic offline SQL
+        run: PYTHONPATH=$PWD/packages/judgment_graph python -m alembic -c alembic.ini upgrade head --sql
+
+  integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_DB: codepick_l2
+          POSTGRES_USER: codepick
+          POSTGRES_PASSWORD: codepick
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U codepick -d codepick_l2"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Live integration
+        env:
+          L2_TEST_POSTGRES_HOST: 127.0.0.1
+          L2_TEST_POSTGRES_PORT: "5432"
+          L2_TEST_REDIS_HOST: 127.0.0.1
+          L2_TEST_REDIS_PORT: "6379"
+          L2_INTEGRATION_STRICT: "1"
+        run: make l2-integration
+      - name: Release check
+        env:
+          L2_TEST_POSTGRES_HOST: 127.0.0.1
+          L2_TEST_POSTGRES_PORT: "5432"
+          L2_TEST_REDIS_HOST: 127.0.0.1
+          L2_TEST_REDIS_PORT: "6379"
+        run: make l2-release-check

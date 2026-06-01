@@ -1,0 +1,22 @@
+{
+  "code": "ai-coding",
+  "name": "AI Coding",
+  "enabled": true,
+  "source_filter": {
+    "keywords": ["ai", "llm", "agent", "coding", "langgraph", "cursor", "codex", "developer tools"],
+    "sources": ["blog", "paper", "github", "newsletter"]
+  },
+  "rubric_prompt": "Score AI coding content on topic fit, content correctness, technical depth, practical usefulness, novelty, and expression. Prefer hands-on agent engineering, tooling, workflows, and reproducible implementation details.",
+  "rubric_version": "aic-v1",
+  "tag_taxonomy": {
+    "topic": ["agent-engineering", "llm-apps", "developer-tools", "workflow", "evaluation"],
+    "level": ["intro", "intermediate", "advanced"],
+    "format": ["tutorial", "case-study", "research", "tool-release"]
+  },
+  "brief_template": "Summarize why this AI coding content matters and who should read it.",
+  "model_profile": {
+    "cheap": "fake-l2-model",
+    "standard": "fake-l2-model"
+  }
+}
+

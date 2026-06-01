@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L2 判断与智能体 · 详尽开发 Plan</title>
+<style>
+  :root{--bg:#f5f8fe;--card:#fff;--ink:#13203a;--muted:#51607a;--dim:#8492ad;--line:#dfe6f3;--acc:#2563eb;--acc2:#1d4ed8;--soft:#e8eefe;--green:#0d9488;--gsoft:#e6f9f3;--blue:#2563eb;--bsoft:#e9f0fe;--amber:#c2730a;--asoft:#fff6e8;--violet:#7c3aed}
+  *{box-sizing:border-box}html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.7;font-size:14.5px}
+  a{color:var(--acc)}.wrap{display:grid;grid-template-columns:252px 1fr;max-width:1300px;margin:0 auto}
+  nav{position:sticky;top:0;height:100vh;overflow-y:auto;padding:22px 13px;border-right:1px solid var(--line);background:#fff}
+  nav .bk{display:inline-block;font-size:10px;font-weight:800;letter-spacing:1px;color:#fff;background:var(--acc);padding:3px 9px;border-radius:6px;margin-bottom:7px}
+  nav .brand{font-weight:800;font-size:14.5px}nav .sub{color:var(--dim);font-size:11px;margin-bottom:12px}
+  nav a{display:block;color:var(--muted);padding:5px 10px;border-radius:7px;font-size:12.3px}nav a:hover{background:var(--soft);color:var(--acc2);text-decoration:none}
+  nav .grp{color:var(--dim);font-size:10px;text-transform:uppercase;letter-spacing:1px;margin:12px 0 2px 10px}
+  main{padding:36px 50px 110px;min-width:0}
+  .tag{display:inline-block;background:var(--soft);color:var(--acc2);border:1px solid #c3d4fb;padding:4px 12px;border-radius:999px;font-size:12.5px;font-weight:700;margin-bottom:12px}
+  h1{font-size:28px;line-height:1.25;margin:0 0 10px;font-weight:800}h1 em{font-style:normal;color:var(--acc)}
+  .lede{color:var(--muted);font-size:15.5px;max-width:830px}
+  .meta{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.mt{background:#fff;border:1px solid var(--line);border-radius:8px;padding:5px 11px;font-size:11.5px;color:var(--muted)}.mt b{color:var(--ink)}
+  section{margin:34px 0;scroll-margin-top:12px}
+  h2{font-size:20px;margin:0 0 6px;font-weight:800;display:flex;align-items:center;gap:10px;padding-bottom:7px;border-bottom:2px solid var(--line)}
+  h2 .x{background:var(--acc);color:#fff;min-width:25px;height:25px;padding:0 6px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;flex-shrink:0}
+  h3{font-size:15px;margin:18px 0 7px}.note{color:var(--dim);font-size:12.3px;margin-bottom:12px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:12px 0;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:12.4px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th,td{padding:8px 11px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}th{background:#e8effb;color:var(--ink);font-weight:700}td{color:var(--muted)}tr:last-child td{border-bottom:none}td strong{color:var(--ink)}
+  .hl{color:var(--acc2);font-weight:700}
+  ul.clean{margin:7px 0;padding-left:18px}ul.clean li{margin:3px 0;color:var(--muted)}ul.clean li strong{color:var(--ink)}
+  code{background:#eef2f5;padding:1.5px 6px;border-radius:5px;font-size:12px;color:var(--violet);font-family:Consolas,monospace}
+  pre{background:#0e1a30;border:1px solid var(--line);border-radius:11px;padding:14px 16px;overflow-x:auto;font-size:11.6px;line-height:1.5;color:#c3d2ea;margin:11px 0}
+  pre .c{color:#6378a0}pre .k{color:#93c5fd}pre .s{color:#6ee7b7}pre .y{color:#fcd34d}pre .t{color:#c4b5fd}
+  .feat{border:1px solid var(--line);border-radius:12px;margin:13px 0;overflow:hidden;background:#fff}
+  .feat .fh{display:flex;align-items:center;gap:10px;padding:11px 16px;background:#eef3fd;border-bottom:1px solid var(--line)}
+  .feat .fid{font-weight:800;color:var(--acc2);font-size:12.5px;background:#fff;border:1px solid #c3d4fb;padding:2px 8px;border-radius:6px;flex-shrink:0}
+  .feat .ft{font-weight:700;font-size:14.5px;color:var(--ink);flex:1}
+  .feat .eff{font-size:11px;color:var(--dim);background:#fff;border:1px solid var(--line);padding:2px 8px;border-radius:6px;flex-shrink:0}
+  .feat .fb{padding:13px 16px}.feat .fdesc{color:var(--muted);font-size:12.8px;margin:0 0 9px}
+  .lbl{font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;margin:10px 0 5px}
+  .lbl.task{color:var(--acc2)}
+  .subtasks{list-style:none;padding:0;margin:0}.subtasks li{padding:4px 0 4px 26px;position:relative;font-size:12.8px;color:var(--muted)}
+  .subtasks li::before{content:"☐";position:absolute;left:2px;top:3px;color:var(--acc);font-size:14px}.subtasks li b{color:var(--ink)}
+  .box{border-radius:9px;padding:10px 13px;margin:6px 0;font-size:12.6px}
+  .box.acc{background:var(--gsoft);border:1px solid #aee6d8}.box.acc b{color:#0f766e}
+  .box.test{background:var(--bsoft);border:1px solid #c3d6fb}.box.test b{color:#1d4ed8}
+  .box ul{margin:5px 0 0;padding-left:18px}.box li{margin:2px 0;color:var(--muted)}
+  .callout{border-left:4px solid var(--acc);background:var(--soft);padding:11px 15px;border-radius:0 10px 10px 0;margin:12px 0;color:var(--muted)}.callout.amber{border-color:var(--amber);background:var(--asoft)}.callout.green{border-color:var(--green);background:var(--gsoft)}.callout b{color:var(--ink)}
+  .pri{display:inline-block;font-size:10px;font-weight:700;padding:1px 7px;border-radius:5px}.p-must{background:#fde8ea;color:#b91c3a}.p-should{background:#fff0d9;color:#a4670a}
+  .foot{margin-top:46px;padding-top:16px;border-top:1px solid var(--line);color:var(--dim);font-size:12px}
+  @media(max-width:980px){.wrap{grid-template-columns:1fr}nav{display:none}main{padding:22px 14px 60px}.grid2,.grid3{grid-template-columns:1fr}h1{font-size:22px}}
+  @media print{nav{display:none}.wrap{grid-template-columns:1fr}body{background:#fff}main{padding:0}.feat,.card{box-shadow:none;break-inside:avoid}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <span class="bk">LAYER 2</span>
+    <div class="brand">判断与智能体 · 开发 Plan</div>
+    <div class="sub">详尽版 · 含验收与自测</div>
+    <a href="#about">说明与范围</a>
+    <a href="#parallel">并行开发与契约</a>
+    <a href="#sprints">里程碑</a>
+    <a href="#ddl">数据库 DDL</a>
+    <div class="grp">功能拆解</div>
+    <a href="#e0">E0 工程基建</a>
+    <a href="#e1">E1 输入+L1 stub</a>
+    <a href="#e2">E2 垂直 lens</a>
+    <a href="#e3">E3 评分图</a>
+    <a href="#e4">E4 翻译图</a>
+    <a href="#e5">E5 精审闭环</a>
+    <a href="#e6">E6 推荐/重排</a>
+    <a href="#e7">E7 伴读 QA</a>
+    <a href="#e8">E8 持久化与契约</a>
+    <a href="#e9">E9 成本/重放</a>
+    <div class="grp">质量</div>
+    <a href="#teststrategy">测试策略</a>
+    <a href="#dod">L2 总验收</a>
+  </nav>
+  <main>
+    <span class="tag">开发 Plan · L2 判断与智能体 · 详尽版</span>
+    <h1>L2 判断与智能体 — <em>详尽开发计划</em></h1>
+    <p class="lede">L2 在 L1 的"内容知识"上做<b>判断与智能处理</b>：垂直评分、翻译、推荐、伴读。这是<b>护城河层</b>。拆成 10 EPIC / ~28 小功能，每个含验收与自测；可对 L1 stub 独立开发。核心：<b>引擎通用、标准按垂直 lens 配置</b>。</p>
+    <div class="meta">
+      <span class="mt">范围：<b>评分/翻译/推荐/伴读</b></span>
+      <span class="mt">EPIC：<b>10</b></span><span class="mt">小功能：<b>~28</b></span>
+      <span class="mt">预估：<b>~17 人日</b></span>
+      <span class="mt">栈：<b>Python · LangGraph · PG/pgvector</b></span>
+    </div>
+
+    <section id="about">
+      <h2><span class="x">i</span>说明与范围</h2>
+      <div class="card"><p style="margin:0">仅覆盖 L2。消费 L1 的 <code>content.analyzed</code> + base_analysis，产出垂直评分/翻译/推荐/伴读。<span class="pri p-must">MUST</span>=MVP，<span class="pri p-should">SHOULD</span>=V1。</p></div>
+    </section>
+
+    <section id="parallel">
+      <h2><span class="x">⇄</span>并行开发与契约</h2>
+      <div class="grid2">
+        <div class="card"><h3 style="margin-top:0">⬇ 输入契约（来自 L1，可 stub）</h3><ul class="clean"><li>事件 <code>content.analyzed {content_id}</code></li><li><code>AnalysisProvider.get(id) -> BaseAnalysis</code>（含 summary/key_points/entities/embedding）</li><li><strong>standalone</strong>：StubAnalysisProvider + fixtures，无需真 L1</li></ul></div>
+        <div class="card"><h3 style="margin-top:0">⬆ 输出契约（给 L3）</h3><ul class="clean"><li><code>content_vertical_scores</code>（content×vertical）</li><li><code>content_translations</code>（中英）</li><li>状态 <code>WAIT_SCORE→WAIT_REVIEW→COMPLETED</code> + 事件 <code>content.completed</code></li><li>请求时：<code>recommend()</code> / <code>companion()</code></li></ul></div>
+      </div>
+      <div class="callout amber"><b>统一接缝：</b>L2 拥有 <code>verticals/content_vertical_scores/content_translations/review_queue</code> 表，只读 <code>content_items/content_base_analysis</code>。集成时把 StubAnalysisProvider 换成真 L1 即可。</div>
+    </section>
+
+    <section id="sprints">
+      <h2><span class="x">▦</span>里程碑（4 Sprint）</h2>
+      <table>
+        <thead><tr><th>Sprint</th><th>目标</th><th>EPIC</th><th>预估</th></tr></thead>
+        <tbody>
+          <tr><td>L2-S1 骨架+lens</td><td>图底座 + L1 stub + 垂直 lens 加载</td><td>E0·E1·E2</td><td>~4.5d</td></tr>
+          <tr><td>L2-S2 评分+翻译</td><td>评分图（含反思优化）+ 翻译图</td><td>E3·E4</td><td>~5d</td></tr>
+          <tr><td>L2-S3 精审+产物</td><td>精审闭环 + 持久化 + 事件</td><td>E5·E8</td><td>~3d</td></tr>
+          <tr><td>L2-S4 推荐+伴读+成本</td><td>推荐重排 + 伴读 + 重放</td><td>E6·E7·E9</td><td>~4.5d</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="ddl">
+      <h2><span class="x">▤</span>数据库 DDL（L2 拥有）</h2>
+      <pre>CREATE TABLE <span class="k">verticals</span>(
+  code TEXT PRIMARY KEY, name TEXT, enabled BOOL DEFAULT true,
+  source_filter JSONB DEFAULT '{}', rubric_prompt TEXT, rubric_version TEXT,
+  tag_taxonomy JSONB DEFAULT '{}', brief_template TEXT, model_profile JSONB DEFAULT '{}');
+
+CREATE TABLE <span class="k">content_vertical_scores</span>(
+  content_id BIGINT REFERENCES content_items(id), vertical_code TEXT REFERENCES verticals(code),
+  relevance INT, dim_scores JSONB <span class="c">-- {topic,content,depth,practical,novelty,expression}</span>,
+  vertical_tags JSONB DEFAULT '[]', quality_score INT,
+  reviewed BOOL DEFAULT false, review_note TEXT, rubric_version TEXT, model TEXT,
+  PRIMARY KEY(content_id, vertical_code));
+
+CREATE TABLE <span class="k">content_translations</span>(
+  content_id BIGINT REFERENCES content_items(id), lang TEXT,
+  fields JSONB, model TEXT, PRIMARY KEY(content_id, lang));
+
+CREATE TABLE <span class="k">review_queue</span>(
+  id BIGSERIAL PRIMARY KEY, content_id BIGINT, vertical_code TEXT,
+  reason TEXT, status TEXT DEFAULT 'pending', reviewer TEXT, decided_at TIMESTAMPTZ);
+
+CREATE TABLE <span class="k">user_interest_vectors</span>(  <span class="c">-- 推荐用，L3 触发更新</span>
+  user_id BIGINT PRIMARY KEY, vector vector(1536), updated_at TIMESTAMPTZ);</pre>
+    </section>
+
+    <section id="e0">
+      <h2><span class="x">E0</span>工程基建 <span class="pri p-must">MUST</span></h2>
+      <div class="feat"><div class="fh"><span class="fid">F0.1</span><span class="ft">judgment_graph 包 + scoring-worker</span><span class="eff">0.5d</span></div><div class="fb">
+        <p class="fdesc">建包与 worker，消费 content.analyzed。</p>
+        <div class="box acc"><b>✓ 验收</b> lint/type 全绿；入队 score 任务被消费</div>
+        <div class="box test"><b>⚙ 自测</b> 集成：入队→断言任务调用</div></div></div>
+      <div class="feat"><div class="fh"><span class="fid">F0.2</span><span class="ft">复用 LLM 客户端 + 路由</span><span class="eff">0.5d</span></div><div class="fb">
+        <p class="fdesc">复用 L1 的 LLMClient/ModelRouter/FakeLLM（共享 common）。</p>
+        <div class="box acc"><b>✓ 验收</b> 可注入 FakeLLM；评分/翻译节点走对档位</div>
+        <div class="box test"><b>⚙ 自测</b> pytest：FakeLLM 注入断言响应</div></div></div>
+      <div class="feat"><div class="fh"><span class="fid">F0.3</span><span class="ft">LangGraph 底座 + DB 迁移</span><span class="eff">1d</span></div><div class="fb">
+        <p class="fdesc">复用图底座；Alembic 迁移 L2 表。</p>
+        <div class="box acc"><b>✓ 验收</b> upgrade/downgrade 通过；trace 可观测</div>
+        <div class="box test"><b>⚙ 自测</b> pytest：迁移往返 + 示例图 trace</div></div></div>
+    </section>
+
+    <section id="e1">
+      <h2><span class="x">E1</span>输入接入 + L1 stub <span class="pri p-must">MUST</span></h2>
+      <div class="feat"><div class="fh"><span class="fid">F1.1</span><span class="ft">AnalysisProvider 抽象</span><span class="eff">0.5d</span></div><div class="fb">
+        <p class="fdesc">取 base_analysis 经接口，屏蔽真 L1 / stub。</p>
+        <div class="box acc"><b>✓ 验收</b> 业务只依赖接口；切换不改图</div>
+        <div class="box test"><b>⚙ 自测</b> stub 返回 fixture 断言可消费</div></div></div>
+      <div class="feat"><div class="fh"><span class="fid">F1.2</span><span class="ft">L1 stub + fixtures</span><span class="eff">0.5d</span></div><div class="fb">
+        <p class="fdesc">提供 base_analysis 样例（AI Coding/非相关/中英）。</p>
+        <div class="box acc"><b>✓ 验收</b> 无真 L1 跑通 L2</div>
+        <div class="box test"><b>⚙ 自测</b> 端到端 stub → 评分产物</div></div></div>
+      <div class="feat"><div class="fh"><span class="fid">F1.3</span><span class="ft">消费 content.analyzed</span><span class="eff">0.5d</span></div><div class="fb">
+        <p class="fdesc">事件 → 入队 score(content_id)，幂等。</p>
+        <div class="box acc"><b>✓ 验收</b> 重复事件不重复评分</div>
+        <div class="box test"><b>⚙ 自测</b> 双发事件断言一次</div></div></div>
+    </section>
+
+    <section id="e2">
+      <h2><span class="x">E2</span>垂直 lens <span class="pri p-must">MUST</span></h2>
+      <div class="feat"><div class="fh"><span class="fid">F2.1</span><span class="ft">lens 加载器</span><span class="eff">0.5d</span></div><div class="fb">
+        <p class="fdesc">按 vertical_code 加载 rubric/taxonomy/source_filter/model_profile。</p>
+        <div class="box acc"><b>✓ 验收</b> lens 配置正确注入图</div>
+        <div class="box test"><b>⚙ 自测</b> pytest：加载 ai-coding lens 断言字段</div></div></div>
+      <div class="feat"><div class="fh"><span class="fid">F2.2</span><span class="ft">ai-coding lens 配置 seed</span><span class="eff">0.5d</span></div><div class="fb">
+        <p class="fdesc">写 AI Coding 的 rubric（六维标准）+ 标签体系 + 源过滤。</p>
+        <div class="box acc"><b>✓ 验收</b> seed 后 lens 可用；rubric_version 标识</div>
+        <div class="box test"><b>⚙ 自测</b> 导入 seed 断言 lens 存在</div></div></div>
+      <div class="feat"><div class="fh"><span class="fid">F2.3</span><span class="ft">relevance_gate 节点</span><span class="eff">0.5d</span></div><div class="fb">
+        <p class="fdesc">判断内容是否属于该垂直，不属于则跳过该 lens。</p>
+        <div class="box acc"><b>✓ 验收</b> 非相关内容被正确跳过</div>
+        <div class="box test"><b>⚙ 自测</b> 相关/不相关样本断言 gate 结果</div></div></div>
+    </section>
+
+    <section id="e3">
+      <h2><span class="x">E3</span>评分图 <span class="pri p-must">MUST</span></h2>
+      <div class="feat"><div class="fh"><span class="fid">F3.1</span><span class="ft">score_6dim（注入 rubric）</span><span class="eff">1.5d</span></div><div class="fb">
+        <p class="fdesc">注入 lens.rubric，产出 relevance + 六维分，结构化 JSON。</p>
+        <div class="lbl task">◇ 子任务</div><ul class="subtasks"><li>rubric 注入 prompt；schema 约束输出</li><li>quality_score 综合计算</li></ul>
+        <div class="box acc"><b>✓ 验收</b> 六维分 0-100 合法；schema 100% 通过</div>
+        <div class="box test"><b>⚙ 自测</b> FakeLLM 断言结构；金标抽样一致性</div></div></div>
+      <div class="feat"><div class="fh"><span class="fid">F3.2</span><span class="ft">vertical_tag 节点</span><span class="eff">0.5d</span></div><div class="fb">
+        <p class="fdesc">按 lens.tag_taxonomy 打垂直标签。</p>
+        <div class="box acc"><b>✓ 验收</b> 标签 ⊆ taxonomy</div>
+        <div class="box test"><b>⚙ 自测</b> 断言标签在词表内</div></div></div>
+      <div class="feat"><div class="fh"><span class="fid">F3.3</span><span class="ft">reflect/check 节点</span><span class="eff">0.5d</span></div><div class="fb">
+        <p class="fdesc">LLM 扮演领域评审专家，查全面/准确/一致。</p>
+        <div class="box acc"><b>✓ 验收</b> 产出检查意见与是否需修正</div>
+        <div class="box test"><b>⚙ 自测</b> FakeLLM 断言反思输出结构</div></div></div>
+      <div class="feat"><div class="fh"><span class="fid">F3.4</span><span class="ft">refine 节点</span><span class="eff">0.5d</span></div><div class="fb">
+        <p class="fdesc">据反思优化最终评分与标签。</p>
+        <div class="box acc"><b>✓ 验收</b> 修正后输出仍合 schema；记录修正原因</div>
+        <div class="box test"><b>⚙ 自测</b> 注入"需修正"反思断言被采纳</div></div></div>
+    </section>
+
+    <section id="e4">
+      <h2><span class="x">E4</span>翻译图 <span class="pri p-must">MUST</span></h2>
+      <div class="feat"><div class="fh"><span class="fid">F4.1</span><span class="ft">identify_terms</span><span class="eff">0.5d</span></div><div class="fb">
+        <p class="fdesc">识别专业术语，保证翻译一致。</p>
+        <div class="box acc"><b>✓ 验收</b> 术语表产出，技术词不乱译</div>
+        <div class="box test"><b>⚙ 自测</b> 含术语样本断言术语保留</div></div></div>
+      <div class="feat"><div class="fh"><span class="fid">F4.2</span><span class="ft">translate + check + refine（中英）</span><span class="eff">1.5d</span></div><div class="fb">
+        <p class="fdesc">对分析结果三段式翻译；产 content_translations。</p>
+        <div class="box acc"><b>✓ 验收</b> 双语产物完整、自然；术语一致</div>
+        <div class="box test"><b>⚙ 自测</b> FakeLLM 断言 translations 结构；金标自然度抽检</div></div></div>
+    </section>
+
+    <section id="e5">
+      <h2><span class="x">E5</span>精审闭环 <span class="pri p-must">MUST</span></h2>
+      <div class="feat"><div class="fh"><span class="fid">F5.1</span><span class="ft">review_queue 入队规则</span><span class="eff">0.5d</span></div><div class="fb">
+        <p class="fdesc">低置信（评分边界）/高曝光内容进精审。</p>
+        <div class="box acc"><b>✓ 验收</b> 命中规则的内容入队；其余高置信自动 COMPLETED</div>
+        <div class="box test"><b>⚙ 自测</b> 边界/高分样本断言入队与否</div></div></div>
+      <div class="feat"><div class="fh"><span class="fid">F5.2</span><span class="ft">人工裁决 + 校准</span><span class="eff">1d</span></div><div class="fb">
+        <p class="fdesc">裁决 → COMPLETED/CANCELLED；反馈用于校准 rubric。</p>
+        <div class="box acc"><b>✓ 验收</b> 裁决推进状态；可记录校准反馈</div>
+        <div class="box test"><b>⚙ 自测</b> 模拟裁决断言终态</div></div></div>
+    </section>
+
+    <section id="e6">
+      <h2><span class="x">E6</span>推荐/重排 <span class="pri p-should">SHOULD</span></h2>
+      <div class="feat"><div class="fh"><span class="fid">F6.1</span><span class="ft">召回（标签 + 向量）</span><span class="eff">1d</span></div><div class="fb">
+        <p class="fdesc">标签通道 + pgvector kNN 两路召回。</p>
+        <div class="box acc"><b>✓ 验收</b> 两路召回结果合并去重，候选集合理</div>
+        <div class="box test"><b>⚙ 自测</b> 构造用户兴趣断言召回包含目标内容</div></div></div>
+      <div class="feat"><div class="fh"><span class="fid">F6.2</span><span class="ft">重排</span><span class="eff">0.5d</span></div><div class="fb">
+        <p class="fdesc">quality×标签权重 + 新鲜度 − 多样性惩罚。</p>
+        <div class="box acc"><b>✓ 验收</b> 排序符合权重；多样性生效</div>
+        <div class="box test"><b>⚙ 自测</b> 固定输入断言排序确定</div></div></div>
+      <div class="feat"><div class="fh"><span class="fid">F6.3</span><span class="ft">用户兴趣向量更新</span><span class="eff">0.5d</span></div><div class="fb">
+        <p class="fdesc">据行为增量更新 user_interest_vectors。</p>
+        <div class="box acc"><b>✓ 验收</b> 行为后向量更新可解释</div>
+        <div class="box test"><b>⚙ 自测</b> 模拟行为断言向量变化</div></div></div>
+    </section>
+
+    <section id="e7">
+      <h2><span class="x">E7</span>伴读 QA <span class="pri p-should">SHOULD</span></h2>
+      <div class="feat"><div class="fh"><span class="fid">F7.1</span><span class="ft">companion 图（SSE）</span><span class="eff">1d</span></div><div class="fb">
+        <p class="fdesc">load(base+text)→retrieve→answer 流式。</p>
+        <div class="box acc"><b>✓ 验收</b> 基于内容回答；流式可用</div>
+        <div class="box test"><b>⚙ 自测</b> FakeLLM 断言注入上下文；流式分块</div></div></div>
+      <div class="feat"><div class="fh"><span class="fid">F7.2</span><span class="ft">配额接口（供 L3）</span><span class="eff">0.5d</span></div><div class="fb">
+        <p class="fdesc">暴露伴读调用入口，配额计数由 L3 治理。</p>
+        <div class="box acc"><b>✓ 验收</b> 接口幂等可计量</div>
+        <div class="box test"><b>⚙ 自测</b> 调用断言返回与计数钩子</div></div></div>
+    </section>
+
+    <section id="e8">
+      <h2><span class="x">E8</span>持久化与产物契约 <span class="pri p-must">MUST</span></h2>
+      <div class="feat"><div class="fh"><span class="fid">F8.1</span><span class="ft">写 content_vertical_scores</span><span class="eff">0.5d</span></div><div class="fb">
+        <p class="fdesc">content×vertical upsert。</p>
+        <div class="box acc"><b>✓ 验收</b> 同 (content,vertical) 一行；字段齐全</div>
+        <div class="box test"><b>⚙ 自测</b> 评分两次断言一行</div></div></div>
+      <div class="feat"><div class="fh"><span class="fid">F8.2</span><span class="ft">写 content_translations</span><span class="eff">0.5d</span></div><div class="fb">
+        <div class="box acc"><b>✓ 验收</b> 双语入库，可被 L3 读取</div>
+        <div class="box test"><b>⚙ 自测</b> 断言中英两行</div></div></div>
+      <div class="feat"><div class="fh"><span class="fid">F8.3</span><span class="ft">状态推进 + 事件</span><span class="eff">0.5d</span></div><div class="fb">
+        <p class="fdesc">WAIT_SCORE→WAIT_REVIEW→COMPLETED；发 content.completed（outbox）。</p>
+        <div class="box acc"><b>✓ 验收</b> 状态合法流转；事件不丢不重</div>
+        <div class="box test"><b>⚙ 自测</b> 两路（自动/精审）断言终态 + 事件</div></div></div>
+    </section>
+
+    <section id="e9">
+      <h2><span class="x">E9</span>成本/缓存/重放 <span class="pri p-should">SHOULD</span></h2>
+      <div class="feat"><div class="fh"><span class="fid">F9.1</span><span class="ft">rubric_version 重评</span><span class="eff">0.5d</span></div><div class="fb">
+        <p class="fdesc">rubric 升级时对历史内容重评（消费 reprocess）。</p>
+        <div class="box acc"><b>✓ 验收</b> 版本升级触发重评，旧分标版本</div>
+        <div class="box test"><b>⚙ 自测</b> 升级 rubric_version 断言重评</div></div></div>
+      <div class="feat"><div class="fh"><span class="fid">F9.2</span><span class="ft">成本计量</span><span class="eff">0.5d</span></div><div class="fb">
+        <div class="box acc"><b>✓ 验收</b> 评分/翻译成本入库可统计</div>
+        <div class="box test"><b>⚙ 自测</b> 跑 N 篇断言成本累计</div></div></div>
+    </section>
+
+    <section id="teststrategy">
+      <h2><span class="x">✓</span>测试策略</h2>
+      <div class="grid3">
+        <div class="card"><h3 style="margin-top:0">单元</h3><ul class="clean"><li>纯函数：重排打分、标签校验、召回合并</li><li>覆盖率 ≥ 80%</li></ul></div>
+        <div class="card"><h3 style="margin-top:0">图测试（FakeLLM）</h3><ul class="clean"><li>评分/翻译/伴读图确定性测试</li><li>断言结构化产物 + 状态流转</li></ul></div>
+        <div class="card"><h3 style="margin-top:0">质量/金标</h3><ul class="clean"><li>评分一致性（AI vs 精审）金标</li><li>翻译自然度离线评估</li></ul></div>
+      </div>
+      <div class="callout amber"><b>同 L1：</b>LLM 节点用 FakeLLM 确定性测试，CI 不真调模型；评分质量用金标离线评估。</div>
+    </section>
+
+    <section id="dod">
+      <h2><span class="x">★</span>L2 总验收（DoD）</h2>
+      <div class="card"><ul class="clean">
+        <li>用 L1 stub + FakeLLM 独立端到端跑通并验收</li>
+        <li>评分：六维分合法、与精审一致性达标、含反思优化</li>
+        <li>翻译：中英完整自然、术语一致</li>
+        <li>精审闭环：低置信入队、裁决推进状态、可校准</li>
+        <li>推荐：两路召回 + 重排合理；伴读基于内容流式</li>
+        <li>产物契约：vertical_scores/translations 完整；content.completed 不丢不重；状态正确</li>
+        <li>成本可控、可重评；覆盖率达标、CI 全绿（不真调模型）</li>
+      </ul></div>
+      <div class="callout green"><b>达成即：</b>L2 可独立交付，向 L3 稳定供给"带判断的内容"。集成时换 AnalysisProvider 为真 L1。</div>
+    </section>
+
+    <div class="foot">L2 判断与智能体 · 详尽开发 Plan · 10 EPIC / ~28 小功能 · 可对 L1 stub 独立开发 · CodePick 分层平台 · 2026-05-30</div>
+  </main>
+</div>
+</body>
+</html>

@@ -1,0 +1,42 @@
+[
+  {
+    "content_id": 1001,
+    "title": "Building reliable LangGraph agents for AI coding",
+    "source": "blog",
+    "language": "en",
+    "summary": "A practical guide to agent workflows, evaluation, and deterministic tests for AI coding tools.",
+    "key_points": ["Use LangGraph for orchestration", "Inject FakeLLM in tests", "Keep L1 and L2 contracts stable"],
+    "entities": ["LangGraph", "FakeLLM", "CodePick"],
+    "tags": ["agent-engineering", "developer-tools", "advanced"],
+    "embedding": [0.1, 0.2, 0.3],
+    "text": "LangGraph and LLM agents can help coding workflows when evaluation is deterministic.",
+    "exposure": 1000
+  },
+  {
+    "content_id": 1002,
+    "title": "Best espresso machines for home kitchens",
+    "source": "commerce",
+    "language": "en",
+    "summary": "A buyer guide for home coffee hardware.",
+    "key_points": ["Compare boilers", "Discuss grinder budget"],
+    "entities": ["Espresso"],
+    "tags": ["shopping"],
+    "embedding": [0.0, 0.1, 0.0],
+    "text": "Coffee gear review.",
+    "exposure": 500
+  },
+  {
+    "content_id": 1003,
+    "title": "AI coding benchmark goes viral",
+    "source": "newsletter",
+    "language": "en",
+    "summary": "A short AI coding benchmark update with uncertain conclusions.",
+    "key_points": ["Mentions LLM tools", "Thin methodology"],
+    "entities": ["LLM"],
+    "tags": ["evaluation"],
+    "embedding": [0.2, 0.2, 0.2],
+    "text": "LLM coding benchmark.",
+    "exposure": 250000
+  }
+]
+

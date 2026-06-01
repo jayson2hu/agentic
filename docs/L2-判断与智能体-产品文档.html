@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L2 判断与智能体 · 产品文档</title>
+<style>
+  :root{--bg:#f6f8fb;--card:#fff;--ink:#13202c;--muted:#54616f;--dim:#8896a4;--line:#e3e9f1;--acc:#2563eb;--acc2:#1d4ed8;--soft:#e8eefe;--amber:#c2730a;--rose:#e11d48;--violet:#7c3aed}
+  *{box-sizing:border-box}html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.72;font-size:15px}
+  a{color:var(--acc)}.wrap{display:grid;grid-template-columns:236px 1fr;max-width:1240px;margin:0 auto}
+  nav{position:sticky;top:0;height:100vh;overflow-y:auto;padding:24px 14px;border-right:1px solid var(--line);background:#fff}
+  nav .bk{display:inline-block;font-size:10px;font-weight:800;letter-spacing:1px;color:#fff;background:var(--acc);padding:3px 9px;border-radius:6px;margin-bottom:8px}
+  nav .brand{font-weight:800;font-size:15px}nav .sub{color:var(--dim);font-size:11px;margin-bottom:14px}
+  nav a{display:block;color:var(--muted);padding:5.5px 11px;border-radius:8px;font-size:12.6px}nav a:hover{background:var(--soft);color:var(--acc2);text-decoration:none}
+  main{padding:38px 52px 110px;min-width:0}
+  .tag{display:inline-block;background:var(--soft);color:var(--acc2);border:1px solid #c3d4fb;padding:4px 12px;border-radius:999px;font-size:12.5px;font-weight:700;margin-bottom:12px}
+  h1{font-size:29px;line-height:1.25;margin:0 0 10px;font-weight:800}h1 em{font-style:normal;color:var(--acc)}
+  .lede{color:var(--muted);font-size:16px;max-width:820px}
+  .meta{display:flex;gap:8px;flex-wrap:wrap;margin:15px 0}.mt{background:#fff;border:1px solid var(--line);border-radius:8px;padding:5px 11px;font-size:11.5px;color:var(--muted)}.mt b{color:var(--ink)}
+  section{margin:36px 0;scroll-margin-top:14px}
+  h2{font-size:20px;margin:0 0 6px;font-weight:800;display:flex;align-items:center;gap:10px;padding-bottom:7px;border-bottom:2px solid var(--line)}
+  h2 .x{background:var(--acc);color:#fff;width:25px;height:25px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;font-size:12.5px;flex-shrink:0}
+  h3{font-size:15.5px;margin:18px 0 7px}.note{color:var(--dim);font-size:12.5px;margin-bottom:12px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:17px 19px;margin:12px 0;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .mini{background:#fff;border:1px solid var(--line);border-radius:11px;padding:14px}.mini h4{margin:0 0 5px;font-size:13.8px}.mini p{margin:0;color:var(--muted);font-size:12.3px}.mini .ic{font-size:18px;margin-bottom:5px;display:block}
+  table{width:100%;border-collapse:collapse;margin:12px 0;font-size:12.6px;background:#fff;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}th{background:#e8effb;color:var(--ink);font-weight:700}td{color:var(--muted)}tr:last-child td{border-bottom:none}td strong{color:var(--ink)}
+  .hl{color:var(--acc2);font-weight:700}
+  ul.clean{margin:8px 0;padding-left:19px}ul.clean li{margin:4px 0;color:var(--muted)}ul.clean li strong{color:var(--ink)}
+  .callout{border-left:4px solid var(--acc);background:var(--soft);padding:12px 16px;border-radius:0 10px 10px 0;margin:12px 0;color:var(--muted)}.callout.amber{border-color:var(--amber);background:#fff8ec}.callout b{color:var(--ink)}
+  code{background:#eef1f6;padding:1.5px 6px;border-radius:5px;font-size:12.2px;color:var(--violet);font-family:Consolas,monospace}
+  .badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:5px;font-weight:700;background:var(--soft);color:var(--acc2)}
+  .foot{margin-top:46px;padding-top:16px;border-top:1px solid var(--line);color:var(--dim);font-size:12px}
+  @media(max-width:980px){.wrap{grid-template-columns:1fr}nav{display:none}main{padding:22px 15px 60px}.grid2,.grid3{grid-template-columns:1fr}h1{font-size:23px}}
+  @media print{nav{display:none}.wrap{grid-template-columns:1fr}body{background:#fff}main{padding:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <span class="bk">LAYER 2</span>
+    <div class="brand">判断与智能体</div>
+    <div class="sub">产品文档 · Judgment & Agents</div>
+    <a href="#what">① 是什么</a>
+    <a href="#moat">② 为何是护城河</a>
+    <a href="#customers">③ 客户</a>
+    <a href="#agents">④ 智能体清单</a>
+    <a href="#lens">⑤ 垂直 lens</a>
+    <a href="#contract">⑥ 产物契约</a>
+    <a href="#metrics">⑦ 指标</a>
+    <a href="#boundary">⑧ 边界</a>
+    <a href="#roadmap">⑨ 演进</a>
+  </nav>
+  <main>
+    <span class="tag">分层产品 3 / 4 · 产品文档</span>
+    <h1>L2 判断与智能体 — <em>Judgment & Agent Service</em></h1>
+    <p class="lede">在 L1 的"内容知识"之上做<b>判断</b>与<b>智能处理</b>：这篇内容对某个垂直值不值得读（六维评分）、翻译成中英、为用户推荐、回答用户提问。这是整个平台<b>差异化与护城河</b>所在——判断标准随时间复利，抄不走。</p>
+    <div class="meta">
+      <span class="mt">层级：<b>L2</b></span>
+      <span class="mt">形态：<b>判断 / Agent 服务</b></span>
+      <span class="mt">客户：<b>L3</b></span>
+      <span class="mt">信条：<b>按垂直拆分 · 判断即护城河</b></span>
+    </div>
+
+    <section id="what">
+      <h2><span class="x">1</span>是什么</h2>
+      <p>L2 消费 L1 的 <code>content.analyzed</code>，运行一组<b>智能体</b>产出"带判断的结果"。与 L0/L1 最大的不同：<span class="hl">L2 是有立场的</span>——它回答"对 AI Coding 而言这篇好不好、值不值得推给这个用户"。</p>
+      <div class="grid3">
+        <div class="mini"><span class="ic">⚖️</span><h4>判断</h4><p>垂直相关性 + 六维评分 + 垂直标签 + 精审。</p></div>
+        <div class="mini"><span class="ic">🌐</span><h4>转化</h4><p>中英翻译，让分析结果双语可读。</p></div>
+        <div class="mini"><span class="ic">🤖</span><h4>智能体</h4><p>推荐/重排、AI 伴读问答、研究/监控（后期）。</p></div>
+      </div>
+    </section>
+
+    <section id="moat">
+      <h2><span class="x">2</span>为何是护城河</h2>
+      <div class="callout"><b>判断标准是平台唯一抄不走的资产。</b>L0 的数据、L1 的通用分析，竞品理论上都能复制；但"<b>什么是 AI Coding 领域的好内容</b>"这套判断——沉淀在评分 rubric、垂直标签体系、精审规则里——是你领域信誉与持续投入的产物，随时间复利。<span class="hl">L2 守住了，整个产品才有不可替代性。</span></div>
+    </section>
+
+    <section id="customers">
+      <h2><span class="x">3</span>它的客户</h2>
+      <table>
+        <thead><tr><th>客户</th><th>从 L2 要什么</th></tr></thead>
+        <tbody>
+          <tr><td><strong>L3 Reader</strong></td><td>垂直评分(排序)、双语分析、个性化推荐、伴读问答</td></tr>
+          <tr><td><strong>L3 Public API/MCP</strong></td><td>对外原语的"评分+结构化分析"结果</td></tr>
+          <tr><td><strong>跨垂直/未来站点</strong></td><td>各自的 vertical lens 复用同一组 agent 能力</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="agents">
+      <h2><span class="x">4</span>智能体清单</h2>
+      <table>
+        <thead><tr><th>Agent</th><th>职责</th><th>阶段</th></tr></thead>
+        <tbody>
+          <tr><td><strong>评分 Agent</strong></td><td>垂直相关性 + 六维分(选题/内容/深度/实用/创新/表达) + 垂直标签 + 检查反思</td><td><span class="badge">MVP</span></td></tr>
+          <tr><td><strong>翻译 Agent</strong></td><td>分析结果中英互译（术语识别→翻译→检查→意译）</td><td><span class="badge">MVP</span></td></tr>
+          <tr><td><strong>精审（人在环）</strong></td><td>低置信/高曝光内容复审，校准标准</td><td><span class="badge">MVP</span></td></tr>
+          <tr><td><strong>推荐/重排 Agent</strong></td><td>多路召回 + 重排（质量×标签权重+新鲜度−多样性）</td><td>V1</td></tr>
+          <tr><td><strong>伴读 QA Agent</strong></td><td>基于内容的总结/提问/章节跳转（SSE）</td><td>V1</td></tr>
+          <tr><td><strong>研究/监控 Agent</strong></td><td>主题追踪、结构化研究包</td><td>V2</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section id="lens">
+      <h2><span class="x">5</span>垂直 lens（跨站关键）</h2>
+      <div class="callout amber"><b>L2 按"垂直 lens"组织。</b>一个 lens = {源过滤 + 评分 rubric + 垂直标签体系 + 早报模板}。评分是 <code>content × vertical</code> 的——同一篇内容在不同 lens 下分数不同。<b>加一个新垂直 = 配一个新 lens，复用同一组 agent 引擎</b>，这是跨站扩展的核心机制。</div>
+    </section>
+
+    <section id="contract">
+      <h2><span class="x">6</span>产物契约（对 L3）</h2>
+      <ul class="clean">
+        <li><strong>产物</strong>：<code>content_vertical_scores</code>（relevance + 六维分 + 垂直标签 + reviewed）、<code>content_translations</code>（中英）、推荐结果、伴读回答流。</li>
+        <li><strong>事件</strong>：评分+精审通过后推进 <code>status=COMPLETED</code>，L3 方可消费。</li>
+        <li><strong>不可见性</strong>：未达 COMPLETED 的判断不对外、不进任何公共结果。</li>
+      </ul>
+    </section>
+
+    <section id="metrics">
+      <h2><span class="x">7</span>核心指标</h2>
+      <div class="grid3">
+        <div class="mini"><span class="ic">🎯</span><h4>评分准确率</h4><p>AI 评分与精审的一致性</p></div>
+        <div class="mini"><span class="ic">🌐</span><h4>翻译质量</h4><p>双语抽检准确/自然度</p></div>
+        <div class="mini"><span class="ic">👆</span><h4>推荐点击率</h4><p>推荐结果被点入的比例</p></div>
+        <div class="mini"><span class="ic">💬</span><h4>伴读满意度</h4><p>问答有用率</p></div>
+        <div class="mini"><span class="ic">✅</span><h4>精审通过率</h4><p>AI 初评的人审通过比例</p></div>
+        <div class="mini"><span class="ic">💵</span><h4>判断成本</h4><p>评分/翻译单篇成本</p></div>
+      </div>
+    </section>
+
+    <section id="boundary">
+      <h2><span class="x">8</span>边界：L2 不做什么</h2>
+      <ul class="clean">
+        <li><strong>不抓取、不存原文</strong>——L0。</li>
+        <li><strong>不做通用内容理解</strong>（摘要/实体）——L1（L2 复用其产物）。</li>
+        <li><strong>不渲染界面、不管账户/计费</strong>——L3。</li>
+        <li><strong>不把未精审判断对外</strong>——质量边界。</li>
+      </ul>
+    </section>
+
+    <section id="roadmap">
+      <h2><span class="x">9</span>演进</h2>
+      <table>
+        <thead><tr><th>阶段</th><th>重点</th></tr></thead>
+        <tbody>
+          <tr><td>MVP</td><td>评分 Agent + 翻译 Agent + 本人精审（AI Coding 单 lens）</td></tr>
+          <tr><td>V1</td><td>推荐/重排 + 伴读 QA + 半自动精审</td></tr>
+          <tr><td>V2</td><td>研究/监控 Agent + 多 lens + 跨垂直综合</td></tr>
+        </tbody>
+      </table>
+      <div class="callout"><b>配套：</b>技术实现见《L2 判断与智能体 · 架构设计文档》。</div>
+    </section>
+
+    <div class="foot">L2 判断与智能体 · 产品文档 · CodePick 分层平台（3/4）· 按垂直 lens · 判断即护城河 · 2026-05-30</div>
+  </main>
+</div>
+</body>
+</html>
