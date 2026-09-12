@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>L2 审核工作台 · 人在环</title>
+<style>
+  :root{
+    --bg:#0b0f17;--panel:rgba(255,255,255,.04);--panel-2:rgba(255,255,255,.06);--panel-line:rgba(255,255,255,.08);
+    --ink:#eef2f9;--muted:#9aa7bd;--dim:#647088;
+    --acc:#6ea8fe;--acc2:#8b5cf6;--mint:#34d399;--amber:#fbbf24;--rose:#fb7185;
+    --grad:linear-gradient(120deg,#6ea8fe,#8b5cf6 55%,#d946ef);
+    --r:14px;--header-h:60px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;background:
+      radial-gradient(900px 500px at 12% -8%,rgba(110,168,254,.16),transparent 60%),
+      radial-gradient(800px 500px at 100% 0%,rgba(139,92,246,.14),transparent 55%),var(--bg);
+    color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    line-height:1.6;font-size:14.5px;-webkit-font-smoothing:antialiased}
+  a{color:var(--acc);text-decoration:none}
+  button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+  .container{max-width:1240px;margin:0 auto;padding:0 22px}
+
+  header{position:sticky;top:0;z-index:30;backdrop-filter:blur(14px);background:rgba(11,15,23,.72);border-bottom:1px solid var(--panel-line)}
+  .nav{display:flex;align-items:center;gap:14px;height:var(--header-h)}
+  .logo{display:flex;align-items:center;gap:9px;font-weight:800}
+  .logo .dot{width:24px;height:24px;border-radius:7px;background:var(--grad);display:grid;place-items:center;font-size:13px}
+  .nav .spacer{flex:1}
+  .nav .back{color:var(--muted);font-size:13px;font-weight:600}
+  .nav .back:hover{color:var(--ink)}
+
+  h1{font-size:23px;font-weight:850;margin:22px 0 3px;letter-spacing:-.3px}
+  .lede{color:var(--muted);font-size:14px;margin:0 0 16px;max-width:760px}
+  .lede b{color:var(--ink)}
+
+  /* stat row */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+  .stat{background:var(--panel);border:1px solid var(--panel-line);border-radius:12px;padding:12px 14px}
+  .stat .n{font-size:23px;font-weight:850;letter-spacing:-.5px}
+  .stat .l{font-size:11.5px;color:var(--muted)}
+
+  /* layout */
+  .work{display:grid;grid-template-columns:340px 1fr;gap:16px;align-items:start;padding-bottom:60px}
+
+  /* queue */
+  .panel{background:var(--panel);border:1px solid var(--panel-line);border-radius:var(--r);padding:14px}
+  .tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+  .tab{background:var(--panel-2);border:1px solid var(--panel-line);color:var(--muted);font-weight:700;font-size:12px;padding:6px 11px;border-radius:999px;cursor:pointer;transition:.15s}
+  .tab:hover{color:var(--ink)}
+  .tab.active{background:var(--grad);color:#0b0f17;border-color:transparent}
+  .queue{display:flex;flex-direction:column;gap:8px;max-height:62vh;overflow-y:auto}
+  .qitem{background:var(--panel-2);border:1px solid var(--panel-line);border-radius:11px;padding:11px 12px;cursor:pointer;transition:.15s}
+  .qitem:hover{border-color:rgba(110,168,254,.5)}
+  .qitem.sel{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc) inset}
+  .qitem .tt{font-size:13px;font-weight:700;line-height:1.4;margin-bottom:6px}
+  .qitem .row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .qbadge{font-size:10px;font-weight:800;padding:2px 7px;border-radius:999px;white-space:nowrap}
+  .qbadge.lc{background:rgba(251,191,36,.14);color:var(--amber);border:1px solid rgba(251,191,36,.3)}
+  .qbadge.he{background:rgba(110,168,254,.14);color:var(--acc);border:1px solid rgba(110,168,254,.3)}
+  .qbadge.st-pending{background:rgba(148,163,184,.14);color:var(--muted);border:1px solid rgba(148,163,184,.25)}
+  .qbadge.st-approved{background:rgba(52,211,153,.16);color:var(--mint);border:1px solid rgba(52,211,153,.3)}
+  .qbadge.st-rejected{background:rgba(251,113,133,.16);color:var(--rose);border:1px solid rgba(251,113,133,.3)}
+  .qmeta{font-size:11px;color:var(--dim)}
+  .empty{color:var(--dim);font-size:13px;text-align:center;padding:26px 0}
+
+  /* detail */
+  .dhead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap;margin-bottom:6px}
+  .dhead h2{font-size:18px;font-weight:800;margin:0;line-height:1.35}
+  .dmeta{display:flex;gap:7px;flex-wrap:wrap;margin:8px 0 4px}
+  .mchip{font-size:11px;color:var(--muted);background:var(--panel-2);border:1px solid var(--panel-line);padding:3px 9px;border-radius:7px}
+  .mchip b{color:var(--ink)}
+  .reflect{display:flex;gap:9px;align-items:flex-start;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:10px;padding:10px 12px;margin:12px 0;font-size:12.5px;color:var(--muted)}
+  .reflect b{color:var(--amber)}
+
+  .legend{display:flex;gap:16px;align-items:center;margin:14px 0 8px;font-size:11.5px;color:var(--muted);flex-wrap:wrap}
+  .legend .sw{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+  .sw.a{background:#46506a}.sw.h{background:linear-gradient(120deg,#6ea8fe,#8b5cf6)}
+
+  /* dimension rows */
+  .dim{display:grid;grid-template-columns:96px 70px 1fr 56px 52px;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--panel-line)}
+  .dim:last-of-type{border-bottom:0}
+  .dim .dn{font-weight:700;font-size:13px}
+  .dim .dn span{display:block;font-size:10px;color:var(--dim);font-weight:600;font-family:Consolas,monospace}
+  .dim .agent{font-size:12px;color:var(--muted);text-align:center}
+  .dim .agent b{display:block;color:var(--ink);font-size:15px;font-weight:800}
+  .slider{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:99px;background:#2a3346;outline:none}
+  .slider::-webkit-slider-thumb{-webkit-appearance:none;width:17px;height:17px;border-radius:50%;background:var(--acc);cursor:pointer;border:2px solid #0b0f17;box-shadow:0 0 0 1px var(--acc)}
+  .slider::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:var(--acc);cursor:pointer;border:2px solid #0b0f17}
+  .num{width:52px;background:var(--panel-2);border:1px solid var(--panel-line);color:var(--ink);border-radius:8px;padding:6px 7px;font-size:13px;text-align:center;font-weight:700}
+  .delta{font-size:12px;font-weight:800;text-align:center;border-radius:7px;padding:2px 0}
+  .delta.up{color:var(--mint)}.delta.down{color:var(--rose)}.delta.zero{color:var(--dim)}
+
+  /* quality summary */
+  .quality{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}
+  .qcard{background:var(--panel-2);border:1px solid var(--panel-line);border-radius:12px;padding:13px 15px}
+  .qcard .t{font-size:11.5px;color:var(--muted);margin-bottom:3px}
+  .qcard .v{font-size:30px;font-weight:850;letter-spacing:-.5px;display:flex;align-items:baseline;gap:8px}
+  .qcard .v .d{font-size:13px;font-weight:800}
+  .qcard.human{border-color:rgba(110,168,254,.4)}
+  .qrow{display:flex;align-items:center;gap:10px;margin-top:8px}
+  .qrow .slider{flex:1}
+  .linkbtn{background:none;border:0;color:var(--acc);font-size:11.5px;font-weight:700;cursor:pointer;padding:0;white-space:nowrap}
+  .linkbtn:hover{text-decoration:underline}
+
+  /* tags */
+  .tagsec{margin:14px 0}
+  .tagsec .h{font-size:12.5px;color:var(--muted);margin-bottom:7px;font-weight:700}
+  .taglist{display:flex;gap:7px;flex-wrap:wrap}
+  .tg{font-size:12px;font-weight:700;padding:5px 11px;border-radius:999px;cursor:pointer;border:1px solid var(--panel-line);background:var(--panel-2);color:var(--muted);transition:.13s;-webkit-user-select:none;user-select:none}
+  .tg:hover{border-color:var(--acc);color:var(--ink)}
+  .tg.on{background:rgba(110,168,254,.18);color:var(--acc);border-color:rgba(110,168,254,.45)}
+
+  /* note + actions */
+  textarea{width:100%;background:var(--panel-2);border:1px solid var(--panel-line);color:var(--ink);border-radius:10px;padding:10px 12px;font-size:13px;font-family:inherit;resize:vertical;min-height:62px}
+  .field-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0}
+  .field-row label{font-size:12.5px;color:var(--muted);font-weight:700}
+  .tin{background:var(--panel-2);border:1px solid var(--panel-line);color:var(--ink);border-radius:9px;padding:8px 11px;font-size:13px;min-width:150px}
+  .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--panel-line)}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;font-weight:750;font-size:13.5px;padding:10px 18px;border-radius:11px;cursor:pointer;border:1px solid transparent;white-space:nowrap;transition:transform .14s,box-shadow .14s,border-color .14s,background .14s;-webkit-user-select:none;user-select:none}
+  .btn:active{transform:translateY(1px)}
+  .btn.approve{background:linear-gradient(120deg,#34d399,#10b981);color:#06281d;box-shadow:0 6px 18px rgba(52,211,153,.3)}
+  .btn.approve:hover{transform:translateY(-1px)}
+  .btn.reject{background:rgba(251,113,133,.14);border-color:rgba(251,113,133,.4);color:#fda4b4}
+  .btn.reject:hover{background:rgba(251,113,133,.22)}
+  .btn.save{background:var(--panel-2);border-color:var(--panel-line);color:var(--ink)}
+  .btn.save:hover{border-color:var(--acc)}
+  .btn.ghost{background:none;border-color:var(--panel-line);color:var(--muted)}
+  .btn.ghost:hover{color:var(--ink)}
+  .decided{display:flex;align-items:center;gap:9px;background:var(--panel-2);border:1px solid var(--panel-line);border-radius:10px;padding:10px 13px;font-size:12.5px;color:var(--muted);margin-top:14px}
+
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(20px);background:#0e1422;border:1px solid var(--panel-line);color:var(--ink);padding:11px 18px;border-radius:12px;font-size:13.5px;font-weight:600;box-shadow:0 14px 40px rgba(0,0,0,.5);opacity:0;pointer-events:none;transition:.25s;z-index:60}
+  .toast.show{opacity:1;transform:translateX(-50%)}
+  .toast b{color:var(--mint)}
+
+  .toolbar{display:flex;justify-content:flex-end;margin-bottom:10px}
+
+  @media(max-width:920px){
+    .work{grid-template-columns:1fr}
+    .stats{grid-template-columns:repeat(2,1fr)}
+    .dim{grid-template-columns:80px 56px 1fr 50px 46px;gap:7px}
+    .quality{grid-template-columns:1fr}
+  }
+  @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header>
+  <div class="container nav">
+    <span class="logo"><span class="dot">◆</span> 审核工作台</span>
+    <span class="spacer"></span>
+    <a class="back" href="index.html">← 返回总览</a>
+  </div>
+</header>
+
+<div class="container">
+  <h1>人在环审核工作台 <span style="font-size:13px;color:var(--dim);font-weight:600">Human-in-the-loop Review</span></h1>
+  <p class="lede">智能体先给出<b>六维评分</b>,你在它的基础上<b>逐项复核、调整、加批注</b>,再决定<b>通过</b>或<b>打回</b>——人工与智能体双向校准。进入审核队列的内容来自<b>低置信</b>(分数贴近 70 边界)或<b>高曝光</b>(≥10万)。</p>
+
+  <div class="stats">
+    <div class="stat"><div class="n" id="s-pending">–</div><div class="l">待审</div></div>
+    <div class="stat"><div class="n" id="s-approved">–</div><div class="l">已通过</div></div>
+    <div class="stat"><div class="n" id="s-rejected">–</div><div class="l">已打回</div></div>
+    <div class="stat"><div class="n" id="s-adjust">–</div><div class="l">平均人工调整(分)</div></div>
+  </div>
+
+  <div class="toolbar">
+    <button class="btn ghost" id="resetBtn" title="清空本地修改,恢复示例数据">↺ 重置示例数据</button>
+  </div>
+
+  <div class="work">
+    <!-- QUEUE -->
+    <div class="panel">
+      <div class="tabs" id="tabs" role="tablist">
+        <button class="tab active" data-st="pending">待审</button>
+        <button class="tab" data-st="approved">已通过</button>
+        <button class="tab" data-st="rejected">已打回</button>
+        <button class="tab" data-st="all">全部</button>
+      </div>
+      <div class="queue" id="queue"></div>
+    </div>
+
+    <!-- DETAIL -->
+    <div class="panel" id="detail">
+      <div class="empty">从左侧队列选择一条内容开始审核</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+  var KEY = 'l2_review_state_v2';
+  var DIMS = [
+    {k:'topic',     n:'选题'},
+    {k:'content',   n:'内容'},
+    {k:'depth',     n:'深度'},
+    {k:'practical', n:'实用'},
+    {k:'novelty',   n:'创新'},
+    {k:'expression',n:'表达'}
+  ];
+  var TAXONOMY = ['agent-engineering','llm-apps','developer-tools','workflow','evaluation','intro','intermediate','advanced','tutorial','case-study','research','tool-release'];
+
+  function seed(){
+    function mk(id, cid, title, source, exposure, reason, relevance, dims, quality, tags, reflection){
+      return {
+        id:id, content_id:cid, vertical_code:'ai-coding', title:title, source:source, exposure:exposure,
+        reason:reason, status:'pending', reviewer:null, relevance:relevance, rubric_version:'aic-v1', model:'fake-l2-model',
+        agent:{dim:dims, quality:quality}, human:{dim:Object.assign({},dims), quality:quality},
+        tags:tags.slice(), note:'', reflection:reflection
+      };
+    }
+    return [
+      mk(1,1012,'用 LangGraph 编排多智能体代码评审流水线','blog',12000,'low_confidence_band',88,
+        {topic:72,content:75,depth:68,practical:77,novelty:70,expression:72},71,
+        ['agent-engineering','workflow','tutorial'],'domain-review: low confidence'),
+      mk(2,1027,'Cursor + Codex 在大型仓库中的实测对比','newsletter',260000,'high_exposure',83,
+        {topic:80,content:82,depth:74,practical:86,novelty:69,expression:81},84,
+        ['developer-tools','evaluation','case-study'],'domain-review: consistent'),
+      mk(3,1043,'手搓一个 100 行的 RAG 评测脚手架','github',8000,'low_confidence_band',69,
+        {topic:66,content:70,depth:63,practical:72,novelty:64,expression:67},66,
+        ['evaluation','llm-apps','tutorial'],'domain-review: low confidence'),
+      mk(4,1058,'Agent 长程记忆:为什么向量检索还不够','paper',540000,'high_exposure',91,
+        {topic:90,content:88,depth:92,practical:78,novelty:90,expression:85},91,
+        ['agent-engineering','research','advanced'],'domain-review: consistent'),
+      mk(5,1061,'把 prompt 当配置:可版本化的提示词工作流','blog',15000,'low_confidence_band',74,
+        {topic:73,content:71,depth:66,practical:75,novelty:68,expression:72},72,
+        ['workflow','developer-tools','intermediate'],'domain-review: low confidence')
+    ];
+  }
+
+  var state, selId=null, filter='pending';
+  function load(){
+    try{ var raw=localStorage.getItem(KEY); if(raw){ state=JSON.parse(raw); return; } }catch(e){}
+    state=seed();
+  }
+  function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){} }
+
+  var $=function(s){return document.querySelector(s);};
+  function avg(dimObj){ var s=0,n=0; for(var k in dimObj){ s+=dimObj[k]; n++; } return n? Math.round(s/n):0; }
+  function reasonBadge(r){ return r==='high_exposure'?'<span class="qbadge he">高曝光</span>':'<span class="qbadge lc">低置信</span>'; }
+  function statusBadge(st){ var m={pending:'待审',approved:'已通过',rejected:'已打回'}; return '<span class="qbadge st-'+st+'">'+m[st]+'</span>'; }
+
+  function totalAdjust(){
+    // mean absolute per-dimension change across all human-decided items
+    var sum=0,count=0;
+    state.forEach(function(it){
+      if(it.status==='pending') return;
+      DIMS.forEach(function(d){ sum+=Math.abs(it.human.dim[d.k]-it.agent.dim[d.k]); count++; });
+    });
+    return count? (sum/count).toFixed(1) : '0.0';
+  }
+  function renderStats(){
+    var p=0,a=0,r=0;
+    state.forEach(function(it){ if(it.status==='pending')p++; else if(it.status==='approved')a++; else if(it.status==='rejected')r++; });
+    $('#s-pending').textContent=p; $('#s-approved').textContent=a; $('#s-rejected').textContent=r;
+    $('#s-adjust').textContent=totalAdjust();
+  }
+
+  function renderQueue(){
+    var list = state.filter(function(it){ return filter==='all'? true : it.status===filter; });
+    var q=$('#queue');
+    if(!list.length){ q.innerHTML='<div class="empty">该分类暂无内容</div>'; return; }
+    q.innerHTML = list.map(function(it){
+      return '<div class="qitem'+(it.id===selId?' sel':'')+'" data-id="'+it.id+'" role="button" tabindex="0">'
+        + '<div class="tt">'+esc(it.title)+'</div>'
+        + '<div class="row">'+reasonBadge(it.reason)+statusBadge(it.status)
+        + '<span class="qmeta">#'+it.content_id+' · 质量 '+it.agent.quality+' · 相关 '+it.relevance+'</span></div>'
+        + '</div>';
+    }).join('');
+  }
+
+  function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+
+  function renderDetail(){
+    var d=$('#detail');
+    var it = state.filter(function(x){return x.id===selId;})[0];
+    if(!it){ d.innerHTML='<div class="empty">从左侧队列选择一条内容开始审核</div>'; return; }
+    var decided = it.status!=='pending';
+
+    var dimRows = DIMS.map(function(dm){
+      var av=it.agent.dim[dm.k], hv=it.human.dim[dm.k], delta=hv-av;
+      var dc = delta>0?'up':(delta<0?'down':'zero');
+      var dt = (delta>0?'+':'')+delta;
+      return '<div class="dim">'
+        + '<div class="dn">'+dm.n+'<span>'+dm.k+'</span></div>'
+        + '<div class="agent">智能体<b>'+av+'</b></div>'
+        + '<input type="range" class="slider" min="0" max="100" value="'+hv+'" data-key="'+dm.k+'" '+(decided?'disabled':'')+' aria-label="'+dm.n+' 人工评分">'
+        + '<input type="number" class="num" min="0" max="100" value="'+hv+'" data-key="'+dm.k+'" '+(decided?'disabled':'')+'>'
+        + '<div class="delta '+dc+'" data-delta="'+dm.k+'">'+dt+'</div>'
+        + '</div>';
+    }).join('');
+
+    var tagHtml = TAXONOMY.map(function(t){
+      var on = it.tags.indexOf(t)>=0;
+      return '<button class="tg'+(on?' on':'')+'" data-tag="'+t+'" '+(decided?'disabled':'')+'>'+t+'</button>';
+    }).join('');
+
+    var hq=avg(it.human.dim), aq=it.agent.quality, qd=it.human.quality-aq;
+    var qdc=qd>0?'up':(qd<0?'down':'zero'), qdt=(qd>0?'+':'')+qd;
+
+    d.innerHTML =
+      '<div class="dhead"><h2>'+esc(it.title)+'</h2><div>'+reasonBadge(it.reason)+' '+statusBadge(it.status)+'</div></div>'
+      + '<div class="dmeta">'
+      +   '<span class="mchip">内容 <b>#'+it.content_id+'</b></span>'
+      +   '<span class="mchip">来源 <b>'+it.source+'</b></span>'
+      +   '<span class="mchip">曝光 <b>'+it.exposure.toLocaleString()+'</b></span>'
+      +   '<span class="mchip">相关性 <b>'+it.relevance+'</b></span>'
+      +   '<span class="mchip">rubric <b>'+it.rubric_version+'</b></span>'
+      +   '<span class="mchip">模型 <b>'+it.model+'</b></span>'
+      + '</div>'
+      + '<div class="reflect"><span>🤖</span><div><b>智能体自检:</b> '+esc(it.reflection)+'。该内容触发<b>'+(it.reason==='high_exposure'?'高曝光':'低置信')+'</b>规则,需人工拍板。</div></div>'
+      + '<div class="legend"><span><span class="sw a"></span>智能体评分</span><span><span class="sw h"></span>人工复核(可拖动/输入)</span><span style="color:var(--dim)">右侧为调整幅度 Δ</span></div>'
+      + dimRows
+      + '<div class="quality">'
+      +   '<div class="qcard"><div class="t">智能体综合质量分</div><div class="v">'+aq+'</div></div>'
+      +   '<div class="qcard human"><div class="t">人工综合质量分</div><div class="v"><span id="hqv">'+it.human.quality+'</span><span class="d '+qdc+'" id="hqd">'+qdt+'</span></div>'
+      +     '<div class="qrow"><input type="range" class="slider" id="hqSlider" min="0" max="100" value="'+it.human.quality+'" '+(decided?'disabled':'')+' aria-label="人工综合质量分">'
+      +     (decided?'':'<button class="linkbtn" id="useAvg">套用六维均值('+hq+')</button>')+'</div>'
+      +   '</div>'
+      + '</div>'
+      + '<div class="tagsec"><div class="h">垂直标签(点击增删,来自 ai-coding 标签体系)</div><div class="taglist">'+tagHtml+'</div></div>'
+      + '<div class="field-row"><label>审核员</label><input class="tin" id="reviewer" placeholder="你的名字" value="'+esc(it.reviewer||'')+'" '+(decided?'disabled':'')+'></div>'
+      + '<div><div class="h" style="font-size:12.5px;color:var(--muted);margin-bottom:6px;font-weight:700">人工批注 / 调整理由</div>'
+      +   '<textarea id="note" placeholder="例如:深度略不足,实用性可,边界案例需补充…" '+(decided?'disabled':'')+'>'+esc(it.note||'')+'</textarea></div>'
+      + (decided
+          ? '<div class="decided"><span>'+(it.status==='approved'?'✅':'↩️')+'</span><div>已由 <b style="color:var(--ink)">'+esc(it.reviewer||'匿名')+'</b> '+(it.status==='approved'?'通过并标记 reviewed=true':'打回待修订')+'。可点下方按钮重新打开。</div></div>'
+            + '<div class="actions"><button class="btn ghost" id="reopen">重新打开审核</button></div>'
+          : '<div class="actions">'
+            + '<button class="btn approve" id="approve">✓ 通过并完成</button>'
+            + '<button class="btn reject" id="reject">↩ 打回修订</button>'
+            + '<button class="btn save" id="saveDraft">保存草稿</button>'
+            + '</div>');
+
+    if(!decided) bindDetail(it);
+    else bindDecided(it);
+  }
+
+  function bindDecided(it){
+    var ro=$('#reopen'); if(ro) ro.onclick=function(){ it.status='pending'; it.reviewer=it.reviewer; save(); renderAll(); };
+  }
+
+  function syncDelta(it, key){
+    var av=it.agent.dim[key], hv=it.human.dim[key], delta=hv-av;
+    var el=document.querySelector('[data-delta="'+key+'"]');
+    if(el){ el.textContent=(delta>0?'+':'')+delta; el.className='delta '+(delta>0?'up':(delta<0?'down':'zero')); }
+  }
+  function refreshHumanQualityHint(it){
+    var hq=avg(it.human.dim);
+    var btn=$('#useAvg'); if(btn) btn.textContent='套用六维均值('+hq+')';
+    var qd=it.human.quality-it.agent.quality;
+    var v=$('#hqv'), dd=$('#hqd');
+    if(v) v.textContent=it.human.quality;
+    if(dd){ dd.textContent=(qd>0?'+':'')+qd; dd.className='d '+(qd>0?'up':(qd<0?'down':'zero')); }
+  }
+
+  function bindDetail(it){
+    // dimension sliders + numbers
+    document.querySelectorAll('.dim .slider').forEach(function(sl){
+      sl.addEventListener('input', function(){
+        var k=sl.getAttribute('data-key'); var v=clamp(parseInt(sl.value,10));
+        it.human.dim[k]=v; var num=document.querySelector('.num[data-key="'+k+'"]'); if(num) num.value=v;
+        syncDelta(it,k); refreshHumanQualityHint(it);
+      });
+    });
+    document.querySelectorAll('.dim .num').forEach(function(nm){
+      nm.addEventListener('input', function(){
+        var k=nm.getAttribute('data-key'); var v=clamp(parseInt(nm.value,10)||0);
+        it.human.dim[k]=v; var sl=document.querySelector('.slider[data-key="'+k+'"]'); if(sl) sl.value=v;
+        syncDelta(it,k); refreshHumanQualityHint(it);
+      });
+    });
+    // quality slider
+    var hqs=$('#hqSlider');
+    if(hqs) hqs.addEventListener('input', function(){ it.human.quality=clamp(parseInt(hqs.value,10)); refreshHumanQualityHint(it); });
+    var ua=$('#useAvg');
+    if(ua) ua.addEventListener('click', function(){ it.human.quality=avg(it.human.dim); if(hqs) hqs.value=it.human.quality; refreshHumanQualityHint(it); });
+    // tags
+    document.querySelectorAll('.tg').forEach(function(tg){
+      tg.addEventListener('click', function(){
+        var t=tg.getAttribute('data-tag'); var i=it.tags.indexOf(t);
+        if(i>=0){ it.tags.splice(i,1); tg.classList.remove('on'); } else { it.tags.push(t); tg.classList.add('on'); }
+      });
+    });
+    // note + reviewer
+    var note=$('#note'); if(note) note.addEventListener('input', function(){ it.note=note.value; });
+    var rv=$('#reviewer'); if(rv) rv.addEventListener('input', function(){ it.reviewer=rv.value; });
+    // actions
+    $('#approve').onclick=function(){ decide(it,'approved'); };
+    $('#reject').onclick=function(){ decide(it,'rejected'); };
+    $('#saveDraft').onclick=function(){ save(); toast('已保存草稿 ✎'); renderStats(); renderQueue(); };
+  }
+  function clamp(v){ return Math.max(0, Math.min(100, isNaN(v)?0:v)); }
+
+  function decide(it, status){
+    if(!it.reviewer){ var rv=$('#reviewer'); if(rv){ rv.focus(); } toast('请先填写审核员名字'); return; }
+    it.status=status; it.reviewed=true; save();
+    toast(status==='approved'?'<b>已通过</b> · 标记 reviewed=true':'<b>已打回</b> · 待修订');
+    // move to next pending automatically
+    var nextPending=state.filter(function(x){return x.status==='pending' && x.id!==it.id;})[0];
+    selId = nextPending? nextPending.id : it.id;
+    renderAll();
+  }
+
+  var toastT;
+  function toast(html){ var t=$('#toast'); t.innerHTML=html; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(function(){t.classList.remove('show');},1900); }
+
+  function renderAll(){ renderStats(); renderQueue(); renderDetail(); }
+
+  // events
+  document.getElementById('tabs').addEventListener('click', function(e){
+    var b=e.target.closest('.tab'); if(!b) return;
+    filter=b.getAttribute('data-st');
+    document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');}); b.classList.add('active');
+    renderQueue();
+  });
+  document.getElementById('queue').addEventListener('click', function(e){
+    var it=e.target.closest('.qitem'); if(!it) return; selId=parseInt(it.getAttribute('data-id'),10); renderAll();
+  });
+  document.getElementById('queue').addEventListener('keydown', function(e){
+    if(e.key!=='Enter' && e.key!==' ') return; var it=e.target.closest('.qitem'); if(!it) return;
+    e.preventDefault(); selId=parseInt(it.getAttribute('data-id'),10); renderAll();
+  });
+  document.getElementById('resetBtn').addEventListener('click', function(){
+    if(confirm('清空本地修改并恢复 5 条示例数据?')){ state=seed(); selId=null; filter='pending';
+      document.querySelectorAll('.tab').forEach(function(t){t.classList.toggle('active', t.getAttribute('data-st')==='pending');});
+      save(); renderAll(); toast('已重置示例数据 ↺'); }
+  });
+
+  // init
+  load();
+  var firstPending = state.filter(function(x){return x.status==='pending';})[0];
+  selId = firstPending? firstPending.id : (state[0]&&state[0].id);
+  renderAll();
+})();
+</script>
+</body>
+</html>

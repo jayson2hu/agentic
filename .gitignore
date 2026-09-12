@@ -5,3 +5,21 @@
 __pycache__/
 *.py[cod]
 *.egg-info/
+
+# Local credentials, runtime state and generated files
+.env
+.env.*
+!.env.example
+.runtime/
+.claude/
+.venv/
+venv/
+.coverage.*
+htmlcov/
+coverage.xml
+build/
+dist/
+*.log
+*.db
+*.sqlite
+*.sqlite3

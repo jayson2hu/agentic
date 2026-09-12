@@ -1,5 +1,7 @@
 # CodePick L2 Judgment & Agents
 
+[异地开发指南](DEVELOPMENT.md) · [平台总文档与关联仓库](https://github.com/jayson2hu/codepick-docs)
+
 This repository implements the L2 service against the frozen contract:
 
 - input event: `content.analyzed {content_id}`
