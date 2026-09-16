@@ -24,7 +24,6 @@ class EventConsumer:
         content_id = int(payload["content_id"])
         if content_id in self._seen:
             return
-        self._seen.add(content_id)
         run_content_pipeline(
             content_id=content_id,
             vertical=self.vertical,
@@ -33,3 +32,4 @@ class EventConsumer:
             llm=self.llm,
             repository=self.repository,
         )
+        self._seen.add(content_id)

@@ -12,8 +12,8 @@ from alembic.config import Config
 from sqlalchemy import create_engine, inspect, text
 
 from judgment_graph.input.stub import StubAnalysisProvider
-from judgment_graph.scripts.seed_verticals import seed_ai_coding_lens
 from judgment_graph.persist.sqlalchemy_repository import SqlAlchemyJudgmentRepository
+from judgment_graph.scripts.seed_verticals import seed_ai_coding_lens
 from judgment_graph.workers.scoring.worker import score
 
 EXPECTED_TABLES = {
@@ -21,6 +21,8 @@ EXPECTED_TABLES = {
     "content_vertical_scores",
     "content_translations",
     "review_queue",
+    "content_judgment_state",
+    "judgment_outbox",
 }
 ROOT = Path(__file__).resolve().parents[4]
 
@@ -126,7 +128,7 @@ async def check_redis() -> IntegrationResult:
                 f"{endpoint} is not reachable and Docker engine is not running",
             )
         return IntegrationResult("redis", "SKIP", f"{endpoint} is not reachable")
-    from arq.connections import RedisSettings, create_pool  # type: ignore[import-not-found]
+    from arq.connections import RedisSettings, create_pool
 
     settings = RedisSettings(host=host, port=port, database=0)
     redis = await create_pool(settings)

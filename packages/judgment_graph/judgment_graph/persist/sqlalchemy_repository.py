@@ -3,23 +3,30 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Literal, cast
 
-from sqlalchemy import Engine, Select, create_engine, delete, insert, select, update
+from sqlalchemy import Connection, Engine, create_engine, delete, insert, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.engine import RowMapping
+from sqlalchemy.exc import IntegrityError
 
 from judgment_graph.contracts import (
     ContentRef,
     ContentStatus,
+    Lens,
     OutboxEvent,
     ReviewItem,
     Translation,
     VerticalScore,
 )
 from judgment_graph.persist import models
-from judgment_graph.contracts import Lens
 
 
 def create_sqlalchemy_engine(url: str) -> Engine:
     return create_engine(url, future=True)
+
+
+class ConcurrentJudgmentUpdateError(RuntimeError):
+    """The durable state changed after it was read; retry from a fresh transaction."""
 
 
 class SqlAlchemyJudgmentRepository:
@@ -27,9 +34,6 @@ class SqlAlchemyJudgmentRepository:
 
     def __init__(self, engine: Engine) -> None:
         self.engine = engine
-        self.statuses: dict[int, ContentStatus] = {}
-        self._outbox: list[OutboxEvent] = []
-        self.cost_units: dict[int, int] = {}
 
     def create_schema(self) -> None:
         models.metadata.create_all(self.engine)
@@ -59,8 +63,33 @@ class SqlAlchemyJudgmentRepository:
             model_profile=dict(row["model_profile"]),
         )
 
+    @property
+    def statuses(self) -> dict[int, ContentStatus]:
+        with self.engine.connect() as conn:
+            return {
+                int(row.content_id): cast(ContentStatus, row.status)
+                for row in conn.execute(select(models.content_judgment_state))
+                if row.status is not None
+            }
+
+    @property
+    def cost_units(self) -> dict[int, int]:
+        with self.engine.connect() as conn:
+            return {
+                int(row.content_id): int(row.cost_units)
+                for row in conn.execute(select(models.content_judgment_state))
+            }
+
     def set_status(self, content_id: int, status: ContentStatus) -> None:
-        current = self.get_status(content_id)
+        with self.engine.begin() as conn:
+            self._set_status(conn, content_id, status)
+
+    def _set_status(self, conn: Connection, content_id: int, status: ContentStatus) -> None:
+        table = models.content_judgment_state
+        row = conn.execute(
+            select(table).where(table.c.content_id == content_id).with_for_update()
+        ).mappings().first()
+        current = row["status"] if row is not None else None
         legal = {
             None: {"WAIT_SCORE", "CANCELLED"},
             "WAIT_SCORE": {"WAIT_REVIEW", "COMPLETED", "CANCELLED", "WAIT_SCORE"},
@@ -68,12 +97,58 @@ class SqlAlchemyJudgmentRepository:
             "COMPLETED": {"COMPLETED"},
             "CANCELLED": {"CANCELLED"},
         }
-        if status not in legal[current]:
+        if current not in legal or status not in legal[current]:
             raise ValueError(f"illegal status transition: {current} -> {status}")
-        self.statuses[content_id] = status
+        values = {"status": status, "updated_at": datetime.now(UTC)}
+        if row is None:
+            try:
+                conn.execute(insert(table).values(content_id=content_id, cost_units=0, **values))
+            except IntegrityError as exc:
+                raise ConcurrentJudgmentUpdateError("judgment state was created concurrently") from exc
+        else:
+            expected = table.c.status.is_(None) if current is None else table.c.status == current
+            result = conn.execute(update(table).where(
+                table.c.content_id == content_id, expected
+            ).values(**values))
+            if result.rowcount != 1:
+                raise ConcurrentJudgmentUpdateError("judgment state changed concurrently")
+
+    def _guard_product_write(self, conn: Connection, content_id: int) -> None:
+        """Lock a writable lifecycle row before changing any product or its cost."""
+        table = models.content_judgment_state
+        result = conn.execute(update(table).where(
+            table.c.content_id == content_id,
+            (table.c.status == "WAIT_SCORE") | table.c.status.is_(None),
+        ).values(updated_at=datetime.now(UTC)))
+        if result.rowcount == 1:
+            return
+        row = conn.execute(
+            select(table.c.status).where(table.c.content_id == content_id)
+        ).first()
+        if row is not None:
+            raise ConcurrentJudgmentUpdateError(f"content products are sealed in {row.status}")
+        # Direct development seeds may create products before lifecycle initialization.
+        try:
+            conn.execute(insert(table).values(content_id=content_id, status=None, cost_units=0))
+        except IntegrityError as exc:
+            raise ConcurrentJudgmentUpdateError("judgment state was created concurrently") from exc
+
+    def _add_cost(self, conn: Connection, content_id: int) -> None:
+        table = models.content_judgment_state
+        result = conn.execute(
+            update(table).where(table.c.content_id == content_id)
+            .values(cost_units=table.c.cost_units + 1, updated_at=datetime.now(UTC))
+        )
+        if result.rowcount == 0:
+            conn.execute(insert(table).values(content_id=content_id, cost_units=1))
 
     def get_status(self, content_id: int) -> ContentStatus | None:
-        return self.statuses.get(content_id)
+        with self.engine.connect() as conn:
+            value = conn.execute(
+                select(models.content_judgment_state.c.status)
+                .where(models.content_judgment_state.c.content_id == content_id)
+            ).scalar_one_or_none()
+        return cast(ContentStatus | None, value)
 
     def persist_score(self, score: VerticalScore) -> None:
         values = {
@@ -89,6 +164,7 @@ class SqlAlchemyJudgmentRepository:
             "model": score.model,
         }
         with self.engine.begin() as conn:
+            self._guard_product_write(conn, score.content_id)
             conn.execute(
                 delete(models.content_vertical_scores).where(
                     models.content_vertical_scores.c.content_id == score.content_id,
@@ -96,7 +172,7 @@ class SqlAlchemyJudgmentRepository:
                 )
             )
             conn.execute(insert(models.content_vertical_scores).values(**values))
-        self.cost_units[score.content_id] = self.cost_units.get(score.content_id, 0) + 1
+            self._add_cost(conn, score.content_id)
 
     def persist_translation(self, translation: Translation) -> None:
         fields: dict[str, object] = dict(translation.fields)
@@ -109,6 +185,7 @@ class SqlAlchemyJudgmentRepository:
             "model": translation.model,
         }
         with self.engine.begin() as conn:
+            self._guard_product_write(conn, translation.content_id)
             conn.execute(
                 delete(models.content_translations).where(
                     models.content_translations.c.content_id == translation.content_id,
@@ -116,10 +193,12 @@ class SqlAlchemyJudgmentRepository:
                 )
             )
             conn.execute(insert(models.content_translations).values(**values))
-        self.cost_units[translation.content_id] = self.cost_units.get(translation.content_id, 0) + 1
+            self._add_cost(conn, translation.content_id)
 
     def enqueue_review(self, content_id: int, vertical_code: str, reason: str) -> ReviewItem:
         with self.engine.begin() as conn:
+            # Acquire the state row's write lock before checking pending review rows.
+            self._set_status(conn, content_id, "WAIT_REVIEW")
             existing = conn.execute(
                 select(models.review_queue).where(
                     models.review_queue.c.content_id == content_id,
@@ -127,7 +206,6 @@ class SqlAlchemyJudgmentRepository:
                     models.review_queue.c.status == "pending",
                 )
             ).mappings().first()
-            self.set_status(content_id, "WAIT_REVIEW")
             if existing is not None:
                 return self._review_from_row(existing)
             result = conn.execute(
@@ -143,12 +221,32 @@ class SqlAlchemyJudgmentRepository:
             return self._review_from_row(result.mappings().one())
 
     def mark_completed(self, content_id: int) -> None:
-        self.set_status(content_id, "COMPLETED")
-        event = OutboxEvent(type="content.completed", payload={"content_id": content_id})
-        if not any(
-            item.type == event.type and item.payload == event.payload for item in self._outbox
-        ):
-            self._outbox.append(event)
+        with self.engine.begin() as conn:
+            self._mark_completed(conn, content_id)
+
+    def _mark_completed(self, conn: Connection, content_id: int) -> None:
+        self._set_status(conn, content_id, "COMPLETED")
+        table = models.judgment_outbox
+        values = {
+            "event_type": "content.completed",
+            "content_id": content_id,
+            "payload": {"content_id": content_id},
+            "created_at": datetime.now(UTC),
+        }
+        if conn.dialect.name == "postgresql":
+            conn.execute(pg_insert(table).values(**values).on_conflict_do_nothing(
+                index_elements=["event_type", "content_id"]
+            ))
+        elif conn.dialect.name == "sqlite":
+            conn.execute(sqlite_insert(table).values(**values).on_conflict_do_nothing(
+                index_elements=["event_type", "content_id"]
+            ))
+        else:
+            exists = conn.execute(select(table.c.id).where(
+                table.c.event_type == "content.completed", table.c.content_id == content_id
+            )).first()
+            if exists is None:
+                conn.execute(insert(table).values(**values))
 
     def decide_review(
         self,
@@ -157,15 +255,24 @@ class SqlAlchemyJudgmentRepository:
         reviewer: str,
         note: str,
     ) -> None:
+        if decision not in {"approved", "rejected"}:
+            raise ValueError("review decision must be approved or rejected")
         with self.engine.begin() as conn:
             row = conn.execute(
                 select(models.review_queue).where(models.review_queue.c.id == review_id)
+                .with_for_update()
             ).mappings().one()
-            conn.execute(
+            if row["status"] != "pending":
+                if row["status"] == decision:
+                    return
+                raise ValueError("review decision is already final")
+            result = conn.execute(
                 update(models.review_queue)
-                .where(models.review_queue.c.id == review_id)
+                .where(models.review_queue.c.id == review_id, models.review_queue.c.status == "pending")
                 .values(status=decision, reviewer=reviewer, decided_at=datetime.now(UTC))
             )
+            if result.rowcount != 1:
+                raise ConcurrentJudgmentUpdateError("review was decided concurrently")
             conn.execute(
                 update(models.content_vertical_scores)
                 .where(
@@ -174,24 +281,19 @@ class SqlAlchemyJudgmentRepository:
                 )
                 .values(reviewed=True, review_note=note)
             )
-        if decision == "approved":
-            self.mark_completed(int(row["content_id"]))
-        else:
-            self.set_status(int(row["content_id"]), "CANCELLED")
+            if decision == "approved":
+                self._mark_completed(conn, int(row["content_id"]))
+            else:
+                self._set_status(conn, int(row["content_id"]), "CANCELLED")
 
     def completed_scores(self, vertical: str) -> list[VerticalScore]:
-        query: Select[tuple[object, ...]] = (
-            select(models.content_vertical_scores)
-            .where(
-                models.content_vertical_scores.c.vertical_code == vertical,
-            )
-        )
-        with self.engine.begin() as conn:
-            return [
-                self._score_from_row(row)
-                for row in conn.execute(query).mappings()
-                if self.statuses.get(int(row["content_id"])) == "COMPLETED"
-            ]
+        scores = models.content_vertical_scores
+        state = models.content_judgment_state
+        query = select(scores).join(state, scores.c.content_id == state.c.content_id).where(
+            scores.c.vertical_code == vertical, state.c.status == "COMPLETED"
+        ).order_by(scores.c.content_id)
+        with self.engine.connect() as conn:
+            return [self._score_from_row(row) for row in conn.execute(query).mappings()]
 
     def reprocess_needed(self, vertical: str, rubric_version: str) -> list[int]:
         with self.engine.begin() as conn:
@@ -206,7 +308,15 @@ class SqlAlchemyJudgmentRepository:
             ]
 
     def outbox(self) -> list[OutboxEvent]:
-        return list(self._outbox)
+        with self.engine.connect() as conn:
+            rows = conn.execute(
+                select(models.judgment_outbox).order_by(models.judgment_outbox.c.id)
+            ).mappings().all()
+        return [OutboxEvent(
+            type=str(row["event_type"]), payload=dict(row["payload"]),
+            created_at=row["created_at"].replace(tzinfo=UTC)
+            if row["created_at"].tzinfo is None else row["created_at"],
+        ) for row in rows]
 
     def translation(self, content_id: int, lang: str) -> Translation | None:
         with self.engine.begin() as conn:

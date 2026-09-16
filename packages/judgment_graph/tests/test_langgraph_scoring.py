@@ -1,8 +1,8 @@
+import pytest
 from judgment_graph.graph.langgraph_build import build_scoring_graph
 from judgment_graph.input.stub import StubAnalysisProvider
 from judgment_graph.lens.loader import load_lens
 from judgment_graph.llm import FakeLLM
-import pytest
 
 
 def maybe_graph():

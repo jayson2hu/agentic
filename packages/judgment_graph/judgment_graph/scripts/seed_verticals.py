@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from typing import cast
 
 from sqlalchemy import create_engine
 
@@ -14,7 +15,7 @@ def ai_coding_lens_path() -> Path:
 
 
 def load_ai_coding_seed() -> dict[str, object]:
-    return json.loads(ai_coding_lens_path().read_text(encoding="utf-8"))
+    return cast(dict[str, object], json.loads(ai_coding_lens_path().read_text(encoding="utf-8")))
 
 
 def seed_ai_coding_lens(repository: SqlAlchemyJudgmentRepository) -> None:
