@@ -26,6 +26,9 @@ class InMemoryJudgmentRepository:
         self.cost_units: dict[int, int] = {}
         self._review_id = 1
 
+    def get_status(self, content_id: int) -> ContentStatus | None:
+        return self.statuses.get(content_id)
+
     def set_status(self, content_id: int, status: ContentStatus) -> None:
         current = self.statuses.get(content_id)
         legal = {

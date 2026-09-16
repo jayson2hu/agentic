@@ -1,6 +1,19 @@
 from __future__ import annotations
 
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, Integer, MetaData, String, Table, Text
+from datetime import UTC, datetime
+
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    Column,
+    DateTime,
+    Integer,
+    MetaData,
+    String,
+    Table,
+    Text,
+    UniqueConstraint,
+)
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.types import JSON
 
@@ -60,4 +73,25 @@ review_queue = Table(
     Column("status", String(16), nullable=False, default="pending"),
     Column("reviewer", Text),
     Column("decided_at", DateTime(timezone=True)),
+)
+
+
+content_judgment_state = Table(
+    "content_judgment_state",
+    metadata,
+    Column("content_id", BigInteger, primary_key=True, autoincrement=False),
+    Column("status", String(16)),
+    Column("cost_units", Integer, nullable=False, default=0, server_default="0"),
+    Column("updated_at", DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)),
+)
+
+judgment_outbox = Table(
+    "judgment_outbox",
+    metadata,
+    Column("id", Integer, primary_key=True, autoincrement=True),
+    Column("event_type", String(64), nullable=False),
+    Column("content_id", BigInteger, nullable=False),
+    Column("payload", json_type(), nullable=False),
+    Column("created_at", DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)),
+    UniqueConstraint("event_type", "content_id", name="uq_judgment_outbox_content_event"),
 )

@@ -1,6 +1,6 @@
 # CodePick L2 Judgment & Agents
 
-[异地开发指南](DEVELOPMENT.md) · [平台总文档与关联仓库](https://github.com/jayson2hu/codepick-docs)
+[异地开发指南](DEVELOPMENT.md) · [2026-09-12 接手与验证](docs/2026-09-12-continuation.md) · [M1 SQL 联通与持久化](docs/2026-09-12-m1-integration.md) · [平台总文档与关联仓库](https://github.com/jayson2hu/codepick-docs)
 
 This repository implements the L2 service against the frozen contract:
 
@@ -22,22 +22,25 @@ L2_ANALYSIS_PROVIDER=sqlalchemy
 L2_L1_DATABASE_URL=postgresql+psycopg://...
 ```
 
-The SQLAlchemy adapter is read-only and reflects the existing L1 `content_items`
-and `content_base_analysis` tables into the frozen `BaseAnalysis` contract.
+The SQLAlchemy adapter now reads the versioned `content_base_analysis` snapshot
+written by L1. This path does not require L0 tables or upstream Python imports.
+It validates content identity, status, source, body, tags, language and embeddings.
+The legacy two-table adapter remains for existing test schemas. See the
+[M1 contract and verification](docs/2026-09-12-m1-integration.md).
 
 ## Commands
 
-Windows PowerShell:
+Windows PowerShell, from the repository root after installing `.[dev]` in `.venv`:
 
-```bash
-$env:PYTHONPATH='D:\vscodefile\agentic\packages\judgment_graph'; python -m pytest D:\vscodefile\agentic\packages\judgment_graph\tests --cov=judgment_graph --cov-report=term-missing --cov-fail-under=80
-$env:PYTHONPATH='D:\vscodefile\agentic\packages\judgment_graph'; python -m ruff check D:\vscodefile\agentic\packages\judgment_graph
-$env:PYTHONPATH='D:\vscodefile\agentic\packages\judgment_graph'; python -m mypy D:\vscodefile\agentic\packages\judgment_graph\judgment_graph
-$env:PYTHONPATH='D:\vscodefile\agentic\packages\judgment_graph'; python -m judgment_graph.scripts.smoke
-$env:PYTHONPATH='D:\vscodefile\agentic\packages\judgment_graph'; python -m judgment_graph.scripts.feature_matrix
-$env:PYTHONPATH='D:\vscodefile\agentic\packages\judgment_graph'; python -m judgment_graph.scripts.verify_contracts
-$env:PYTHONPATH='D:\vscodefile\agentic\packages\judgment_graph'; python -m judgment_graph.scripts.audit_dod
-$env:PYTHONPATH='D:\vscodefile\agentic\packages\judgment_graph'; python -m alembic -c D:\vscodefile\agentic\alembic.ini upgrade head --sql
+```powershell
+.\.venv\Scripts\python.exe -m pytest packages/judgment_graph/tests --cov=judgment_graph --cov-report=term-missing --cov-fail-under=80
+.\.venv\Scripts\python.exe -m ruff check packages/judgment_graph
+.\.venv\Scripts\python.exe -m mypy packages/judgment_graph/judgment_graph
+.\.venv\Scripts\python.exe -m judgment_graph.scripts.smoke
+.\.venv\Scripts\python.exe -m judgment_graph.scripts.feature_matrix
+.\.venv\Scripts\python.exe -m judgment_graph.scripts.verify_contracts
+.\.venv\Scripts\python.exe -m judgment_graph.scripts.audit_dod
+.\.venv\Scripts\python.exe -m alembic -c alembic.ini upgrade head --sql
 ```
 
 POSIX/CI with `make`:
@@ -64,8 +67,17 @@ The SQLAlchemy metadata and Alembic migration declare only L2-owned tables:
 - `content_vertical_scores`
 - `content_translations`
 - `review_queue`
+- `content_judgment_state`
+- `judgment_outbox`
 
-The default smoke path uses `InMemoryJudgmentRepository`. Integration can switch to
+Migration `20260912_0002` adds durable lifecycle/cost state and completion events.
+Completed products remain queryable after recreating the repository in another process.
+
+The default smoke path uses `InMemoryJudgmentRepository`. M1 adds persistent SQL
+status, costs and completion events alongside scores/translations; use the new
+Alembic revision when upgrading an existing L2 database. Completed, cancelled and
+review-pending duplicate tasks preserve their state across restarts; explicit
+version rescoring and completion-event delivery acknowledgements remain future work. Integration can switch to
 `SqlAlchemyJudgmentRepository` without changing graph or L1 provider code.
 
 `verify_contracts` checks that only the allowed L2 table names are declared, no L3 imports

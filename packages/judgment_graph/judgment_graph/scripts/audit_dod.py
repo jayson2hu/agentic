@@ -3,10 +3,10 @@ from __future__ import annotations
 import asyncio
 from dataclasses import dataclass
 
+from judgment_graph.scripts.feature_matrix import verify_feature_self_tests
 from judgment_graph.scripts.integration_check import IntegrationResult, check_postgres, check_redis
 from judgment_graph.scripts.verify_contracts import (
     verify_feature_markers,
-    verify_feature_self_tests,
     verify_no_l3_imports,
     verify_no_real_llm_clients,
     verify_owned_tables,
@@ -29,7 +29,7 @@ def audit_items(
     verified.append(
         AuditItem(
             "L2 table ownership",
-            "SQLAlchemy metadata declares only verticals/content_vertical_scores/content_translations/review_queue.",
+            "SQLAlchemy metadata declares six L2-owned tables, including durable lifecycle state and completion outbox.",
             "PASS",
         )
     )

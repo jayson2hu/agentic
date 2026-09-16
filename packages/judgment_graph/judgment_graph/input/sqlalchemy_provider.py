@@ -9,6 +9,11 @@ from sqlalchemy.engine import RowMapping
 from sqlalchemy.sql.elements import ColumnElement
 
 from judgment_graph.contracts import BaseAnalysis
+from judgment_graph.input.snapshot_contract import (
+    SNAPSHOT_COLUMNS,
+    analysis_from_snapshot,
+    positive_content_id,
+)
 
 
 def create_l1_engine(url: str) -> Engine:
@@ -21,12 +26,32 @@ class SqlAlchemyAnalysisProvider:
     def __init__(self, engine: Engine) -> None:
         self.engine = engine
         self.metadata = MetaData()
-        self.content_items = Table("content_items", self.metadata, autoload_with=engine)
         self.content_base_analysis = Table(
             "content_base_analysis", self.metadata, autoload_with=engine
         )
+        columns = set(self.content_base_analysis.c.keys())
+        self.versioned_snapshot = bool({"schema_version", "input_snapshot"} & columns)
+        self.content_items: Table | None = None
+        if self.versioned_snapshot:
+            missing = SNAPSHOT_COLUMNS - columns
+            if missing:
+                raise ValueError(f"incomplete L1 snapshot table contract: {sorted(missing)}")
+        else:
+            # Legacy hand-built schemas still need the historical L0/L1 table join.
+            self.content_items = Table("content_items", self.metadata, autoload_with=engine)
 
     def get(self, content_id: int) -> BaseAnalysis:
+        if self.versioned_snapshot:
+            requested_id = positive_content_id(content_id)
+            query = select(self.content_base_analysis).where(
+                self.content_base_analysis.c.content_id == str(requested_id)
+            )
+            with self.engine.connect() as conn:
+                snapshot_row = conn.execute(query).mappings().one_or_none()
+            if snapshot_row is None:
+                raise KeyError(f"L1 base_analysis not found: {requested_id}")
+            return analysis_from_snapshot(dict(snapshot_row), requested_id)
+        assert self.content_items is not None
         item_id_col = self._required_col(self.content_items, "id")
         analysis_content_col = self._first_col(
             self.content_base_analysis, ("content_id", "item_id", "id")

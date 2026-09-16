@@ -17,6 +17,10 @@ def run_content_pipeline(
     llm: LLMClient,
     repository: JudgmentRepository,
 ) -> None:
+    # The frozen event identifies content only; duplicate deliveries must not reopen it.
+    # Explicit versioned reprocessing is a separate, currently unsupported operation.
+    if repository.get_status(content_id) in {"COMPLETED", "CANCELLED", "WAIT_REVIEW"}:
+        return
     analysis = provider.get(content_id)
     lens = lens_loader.load_lens(vertical)
     repository.set_status(content_id, "WAIT_SCORE")

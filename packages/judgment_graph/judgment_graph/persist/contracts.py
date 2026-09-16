@@ -2,10 +2,18 @@ from __future__ import annotations
 
 from typing import Literal, Protocol
 
-from judgment_graph.contracts import ContentRef, ContentStatus, ReviewItem, Translation, VerticalScore
+from judgment_graph.contracts import (
+    ContentRef,
+    ContentStatus,
+    ReviewItem,
+    Translation,
+    VerticalScore,
+)
 
 
 class JudgmentRepository(Protocol):
+    def get_status(self, content_id: int) -> ContentStatus | None: ...
+
     def set_status(self, content_id: int, status: ContentStatus) -> None: ...
 
     def persist_score(self, score: VerticalScore) -> None: ...

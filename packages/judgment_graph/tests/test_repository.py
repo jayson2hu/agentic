@@ -1,7 +1,6 @@
 from dataclasses import replace
 
 import pytest
-
 from judgment_graph.contracts import VerticalScore
 from judgment_graph.persist.repository import InMemoryJudgmentRepository
 

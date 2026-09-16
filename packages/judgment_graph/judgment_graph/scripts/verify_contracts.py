@@ -13,6 +13,8 @@ ALLOWED_L2_TABLES = {
     "content_vertical_scores",
     "content_translations",
     "review_queue",
+    "content_judgment_state",
+    "judgment_outbox",
 }
 FORBIDDEN_LLM_MODULES = {
     "anthropic",
