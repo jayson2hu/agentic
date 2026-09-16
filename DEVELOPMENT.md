@@ -40,6 +40,23 @@ L2_HTTP_PORT=8200 \
 `L2_API_KEY`；跨域场景可设置逗号分隔的 `L2_CORS_ORIGINS`。本机联调应保持
 `L2_HTTP_HOST=127.0.0.1`，并让 worker 与 HTTP 使用相同的 `L2_DATABASE_URL`。
 
+版本消息模式还需启动 Redis bridge 和 Arq worker：
+
+```sh
+L2_REDIS_URL=redis://127.0.0.1:6379/0 \
+L2_EVENT_QUEUE=codepick:l1:events \
+.venv/bin/python -m judgment_graph.scripts.consume_events
+
+L2_REDIS_URL=redis://127.0.0.1:6379/0 \
+L2_DATABASE_URL=sqlite:////tmp/codepick/l2.db \
+L2_L1_DATABASE_URL=sqlite:////tmp/codepick/l1.db \
+L2_ANALYSIS_PROVIDER=sqlalchemy \
+.venv/bin/arq judgment_graph.workers.scoring.worker.WorkerSettings
+```
+
+迁移到最新版本时必须包含 `20260916_0003`。该版本记录已接受的 L1
+`run_id/revision`，并阻止旧任务覆盖新评分。
+
 严格本地集成检查使用仅绑定 localhost 的测试服务：
 
 ```sh

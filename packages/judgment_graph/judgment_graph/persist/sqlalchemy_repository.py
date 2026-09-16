@@ -80,16 +80,90 @@ class SqlAlchemyJudgmentRepository:
                 for row in conn.execute(select(models.content_judgment_state))
             }
 
-    def set_status(self, content_id: int, status: ContentStatus) -> None:
+    def begin_version(
+        self, content_id: int, source_run_id: str, source_revision: int
+    ) -> bool:
+        if not source_run_id.strip() or source_revision < 1:
+            raise ValueError("versioned processing requires a run_id and positive revision")
+        table = models.content_judgment_state
         with self.engine.begin() as conn:
-            self._set_status(conn, content_id, status)
+            row = conn.execute(
+                select(table).where(table.c.content_id == content_id).with_for_update()
+            ).mappings().first()
+            current_revision = int(row["source_revision"]) if row is not None else 0
+            if source_revision < current_revision:
+                return False
+            if source_revision == current_revision:
+                if row is not None and row["source_run_id"] != source_run_id:
+                    raise ValueError("source revision is already associated with another run")
+                return False
+            values = {
+                "status": "WAIT_SCORE",
+                "source_run_id": source_run_id,
+                "source_revision": source_revision,
+                "cost_units": 0,
+                "updated_at": datetime.now(UTC),
+            }
+            if row is None:
+                try:
+                    conn.execute(insert(table).values(content_id=content_id, **values))
+                except IntegrityError as exc:
+                    raise ConcurrentJudgmentUpdateError(
+                        "judgment state was created concurrently"
+                    ) from exc
+            else:
+                result = conn.execute(
+                    update(table)
+                    .where(
+                        table.c.content_id == content_id,
+                        table.c.source_revision == current_revision,
+                    )
+                    .values(**values)
+                )
+                if result.rowcount != 1:
+                    raise ConcurrentJudgmentUpdateError(
+                        "a newer source revision was accepted concurrently"
+                    )
+            conn.execute(
+                delete(models.review_queue).where(
+                    models.review_queue.c.content_id == content_id,
+                    models.review_queue.c.status == "pending",
+                )
+            )
+            return True
 
-    def _set_status(self, conn: Connection, content_id: int, status: ContentStatus) -> None:
+    def set_status(
+        self,
+        content_id: int,
+        status: ContentStatus,
+        *,
+        source_revision: int | None = None,
+    ) -> None:
+        with self.engine.begin() as conn:
+            self._set_status(
+                conn, content_id, status, source_revision=source_revision
+            )
+
+    def _set_status(
+        self,
+        conn: Connection,
+        content_id: int,
+        status: ContentStatus,
+        *,
+        source_revision: int | None = None,
+    ) -> None:
         table = models.content_judgment_state
         row = conn.execute(
             select(table).where(table.c.content_id == content_id).with_for_update()
         ).mappings().first()
         current = row["status"] if row is not None else None
+        if (
+            source_revision is not None
+            and (row is None or int(row["source_revision"]) != source_revision)
+        ):
+            raise ConcurrentJudgmentUpdateError(
+                "a newer source revision is already active"
+            )
         legal = {
             None: {"WAIT_SCORE", "CANCELLED"},
             "WAIT_SCORE": {"WAIT_REVIEW", "COMPLETED", "CANCELLED", "WAIT_SCORE"},
@@ -107,25 +181,40 @@ class SqlAlchemyJudgmentRepository:
                 raise ConcurrentJudgmentUpdateError("judgment state was created concurrently") from exc
         else:
             expected = table.c.status.is_(None) if current is None else table.c.status == current
-            result = conn.execute(update(table).where(
-                table.c.content_id == content_id, expected
-            ).values(**values))
+            conditions = [table.c.content_id == content_id, expected]
+            if source_revision is not None:
+                conditions.append(table.c.source_revision == source_revision)
+            result = conn.execute(update(table).where(*conditions).values(**values))
             if result.rowcount != 1:
                 raise ConcurrentJudgmentUpdateError("judgment state changed concurrently")
 
-    def _guard_product_write(self, conn: Connection, content_id: int) -> None:
+    def _guard_product_write(
+        self,
+        conn: Connection,
+        content_id: int,
+        source_revision: int | None,
+    ) -> None:
         """Lock a writable lifecycle row before changing any product or its cost."""
         table = models.content_judgment_state
-        result = conn.execute(update(table).where(
+        conditions = [
             table.c.content_id == content_id,
             (table.c.status == "WAIT_SCORE") | table.c.status.is_(None),
-        ).values(updated_at=datetime.now(UTC)))
+        ]
+        if source_revision is not None:
+            conditions.append(table.c.source_revision == source_revision)
+        result = conn.execute(
+            update(table).where(*conditions).values(updated_at=datetime.now(UTC))
+        )
         if result.rowcount == 1:
             return
         row = conn.execute(
             select(table.c.status).where(table.c.content_id == content_id)
         ).first()
         if row is not None:
+            if source_revision is not None:
+                raise ConcurrentJudgmentUpdateError(
+                    "a newer source revision is already active"
+                )
             raise ConcurrentJudgmentUpdateError(f"content products are sealed in {row.status}")
         # Direct development seeds may create products before lifecycle initialization.
         try:
@@ -133,13 +222,22 @@ class SqlAlchemyJudgmentRepository:
         except IntegrityError as exc:
             raise ConcurrentJudgmentUpdateError("judgment state was created concurrently") from exc
 
-    def _add_cost(self, conn: Connection, content_id: int) -> None:
+    def _add_cost(
+        self, conn: Connection, content_id: int, source_revision: int | None
+    ) -> None:
         table = models.content_judgment_state
-        result = conn.execute(
-            update(table).where(table.c.content_id == content_id)
-            .values(cost_units=table.c.cost_units + 1, updated_at=datetime.now(UTC))
-        )
+        conditions = [table.c.content_id == content_id]
+        if source_revision is not None:
+            conditions.append(table.c.source_revision == source_revision)
+        result = conn.execute(update(table).where(*conditions).values(
+            cost_units=table.c.cost_units + 1,
+            updated_at=datetime.now(UTC),
+        ))
         if result.rowcount == 0:
+            if source_revision is not None:
+                raise ConcurrentJudgmentUpdateError(
+                    "a newer source revision is already active"
+                )
             conn.execute(insert(table).values(content_id=content_id, cost_units=1))
 
     def get_status(self, content_id: int) -> ContentStatus | None:
@@ -150,7 +248,9 @@ class SqlAlchemyJudgmentRepository:
             ).scalar_one_or_none()
         return cast(ContentStatus | None, value)
 
-    def persist_score(self, score: VerticalScore) -> None:
+    def persist_score(
+        self, score: VerticalScore, *, source_revision: int | None = None
+    ) -> None:
         values = {
             "content_id": score.content_id,
             "vertical_code": score.vertical_code,
@@ -164,7 +264,7 @@ class SqlAlchemyJudgmentRepository:
             "model": score.model,
         }
         with self.engine.begin() as conn:
-            self._guard_product_write(conn, score.content_id)
+            self._guard_product_write(conn, score.content_id, source_revision)
             conn.execute(
                 delete(models.content_vertical_scores).where(
                     models.content_vertical_scores.c.content_id == score.content_id,
@@ -172,9 +272,11 @@ class SqlAlchemyJudgmentRepository:
                 )
             )
             conn.execute(insert(models.content_vertical_scores).values(**values))
-            self._add_cost(conn, score.content_id)
+            self._add_cost(conn, score.content_id, source_revision)
 
-    def persist_translation(self, translation: Translation) -> None:
+    def persist_translation(
+        self, translation: Translation, *, source_revision: int | None = None
+    ) -> None:
         fields: dict[str, object] = dict(translation.fields)
         if translation.terms:
             fields["_terms"] = dict(translation.terms)
@@ -185,7 +287,9 @@ class SqlAlchemyJudgmentRepository:
             "model": translation.model,
         }
         with self.engine.begin() as conn:
-            self._guard_product_write(conn, translation.content_id)
+            self._guard_product_write(
+                conn, translation.content_id, source_revision
+            )
             conn.execute(
                 delete(models.content_translations).where(
                     models.content_translations.c.content_id == translation.content_id,
@@ -193,12 +297,24 @@ class SqlAlchemyJudgmentRepository:
                 )
             )
             conn.execute(insert(models.content_translations).values(**values))
-            self._add_cost(conn, translation.content_id)
+            self._add_cost(conn, translation.content_id, source_revision)
 
-    def enqueue_review(self, content_id: int, vertical_code: str, reason: str) -> ReviewItem:
+    def enqueue_review(
+        self,
+        content_id: int,
+        vertical_code: str,
+        reason: str,
+        *,
+        source_revision: int | None = None,
+    ) -> ReviewItem:
         with self.engine.begin() as conn:
             # Acquire the state row's write lock before checking pending review rows.
-            self._set_status(conn, content_id, "WAIT_REVIEW")
+            self._set_status(
+                conn,
+                content_id,
+                "WAIT_REVIEW",
+                source_revision=source_revision,
+            )
             existing = conn.execute(
                 select(models.review_queue).where(
                     models.review_queue.c.content_id == content_id,
@@ -220,30 +336,61 @@ class SqlAlchemyJudgmentRepository:
             )
             return self._review_from_row(result.mappings().one())
 
-    def mark_completed(self, content_id: int) -> None:
+    def mark_completed(
+        self, content_id: int, *, source_revision: int | None = None
+    ) -> None:
         with self.engine.begin() as conn:
-            self._mark_completed(conn, content_id)
+            self._mark_completed(
+                conn, content_id, source_revision=source_revision
+            )
 
-    def _mark_completed(self, conn: Connection, content_id: int) -> None:
-        self._set_status(conn, content_id, "COMPLETED")
+    def _mark_completed(
+        self,
+        conn: Connection,
+        content_id: int,
+        *,
+        source_revision: int | None = None,
+    ) -> None:
+        self._set_status(
+            conn,
+            content_id,
+            "COMPLETED",
+            source_revision=source_revision,
+        )
+        state = conn.execute(
+            select(models.content_judgment_state).where(
+                models.content_judgment_state.c.content_id == content_id
+            )
+        ).mappings().one()
+        accepted_revision = int(state["source_revision"])
+        accepted_run_id = cast(str | None, state["source_run_id"])
+        payload: dict[str, object] = {"content_id": content_id}
+        if accepted_revision:
+            payload["source_revision"] = accepted_revision
+        if accepted_run_id is not None:
+            payload["source_run_id"] = accepted_run_id
         table = models.judgment_outbox
         values = {
             "event_type": "content.completed",
             "content_id": content_id,
-            "payload": {"content_id": content_id},
+            "source_run_id": accepted_run_id,
+            "source_revision": accepted_revision,
+            "payload": payload,
             "created_at": datetime.now(UTC),
         }
         if conn.dialect.name == "postgresql":
             conn.execute(pg_insert(table).values(**values).on_conflict_do_nothing(
-                index_elements=["event_type", "content_id"]
+                index_elements=["event_type", "content_id", "source_revision"]
             ))
         elif conn.dialect.name == "sqlite":
             conn.execute(sqlite_insert(table).values(**values).on_conflict_do_nothing(
-                index_elements=["event_type", "content_id"]
+                index_elements=["event_type", "content_id", "source_revision"]
             ))
         else:
             exists = conn.execute(select(table.c.id).where(
-                table.c.event_type == "content.completed", table.c.content_id == content_id
+                table.c.event_type == "content.completed",
+                table.c.content_id == content_id,
+                table.c.source_revision == accepted_revision,
             )).first()
             if exists is None:
                 conn.execute(insert(table).values(**values))
@@ -282,9 +429,28 @@ class SqlAlchemyJudgmentRepository:
                 .values(reviewed=True, review_note=note)
             )
             if decision == "approved":
-                self._mark_completed(conn, int(row["content_id"]))
+                state = conn.execute(
+                    select(models.content_judgment_state).where(
+                        models.content_judgment_state.c.content_id == row["content_id"]
+                    )
+                ).mappings().one()
+                self._mark_completed(
+                    conn,
+                    int(row["content_id"]),
+                    source_revision=int(state["source_revision"]),
+                )
             else:
-                self._set_status(conn, int(row["content_id"]), "CANCELLED")
+                state = conn.execute(
+                    select(models.content_judgment_state.c.source_revision).where(
+                        models.content_judgment_state.c.content_id == row["content_id"]
+                    )
+                ).scalar_one()
+                self._set_status(
+                    conn,
+                    int(row["content_id"]),
+                    "CANCELLED",
+                    source_revision=int(state),
+                )
 
     def completed_scores(self, vertical: str | None = None) -> list[VerticalScore]:
         scores = models.content_vertical_scores

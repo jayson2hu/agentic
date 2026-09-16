@@ -44,6 +44,42 @@ def test_pipeline_products_state_cost_and_outbox_survive_new_engine(tmp_path: Pa
     second_engine.dispose()
 
 
+def test_new_l1_revision_rescores_and_stale_redelivery_is_ignored(tmp_path: Path) -> None:
+    from judgment_graph.events.consume import EventConsumer
+
+    engine = create_engine(f"sqlite+pysqlite:///{tmp_path / 'versions.db'}")
+    repo = SqlAlchemyJudgmentRepository(engine)
+    repo.create_schema()
+    consumer = EventConsumer(
+        StubAnalysisProvider(), FileLensLoader(), FakeLLM(), repo
+    )
+
+    consumer.consume(
+        "content.analyzed",
+        {"content_id": 1001, "run_id": "l1-run-v1", "revision": 1},
+    )
+    assert repo.get_status(1001) == "COMPLETED"
+    assert repo.cost_units[1001] == 3
+    consumer.consume(
+        "content.analyzed",
+        {"content_id": 1001, "run_id": "l1-run-v2", "revision": 2},
+    )
+    assert repo.get_status(1001) == "COMPLETED"
+    assert repo.cost_units[1001] == 3
+    assert [event.payload["source_revision"] for event in repo.outbox()] == [1, 2]
+
+    scores = repo.completed_scores("ai-coding")
+    translations = [repo.translation(1001, lang) for lang in ("en", "zh")]
+    consumer.consume(
+        "content.analyzed",
+        {"content_id": 1001, "run_id": "late-l1-run-v1", "revision": 1},
+    )
+    assert repo.completed_scores("ai-coding") == scores
+    assert [repo.translation(1001, lang) for lang in ("en", "zh")] == translations
+    assert [event.payload["source_revision"] for event in repo.outbox()] == [1, 2]
+    engine.dispose()
+
+
 def test_review_can_complete_after_repository_restart(tmp_path: Path) -> None:
     url = f"sqlite+pysqlite:///{tmp_path / 'review.db'}"
     engine = create_engine(url)

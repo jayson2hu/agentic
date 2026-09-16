@@ -130,6 +130,30 @@ def test_concurrent_first_status_insert_reports_retryable_conflict(repositories)
     assert second.statuses == {8: "WAIT_SCORE"}
 
 
+def test_old_revision_cannot_write_after_new_revision_is_accepted(repositories) -> None:
+    first, second = repositories
+    assert first.begin_version(7, "run-v1", 1)
+    assert second.begin_version(7, "run-v2", 2)
+
+    with pytest.raises(ConcurrentJudgmentUpdateError, match="newer source revision"):
+        first.persist_score(
+            VerticalScore(
+                content_id=7,
+                vertical_code="ai-coding",
+                relevance=90,
+                dim_scores={dimension: 90 for dimension in DIMENSIONS},
+                vertical_tags=["agent-engineering"],
+                quality_score=90,
+                reviewed=False,
+                rubric_version="aic-v1",
+                model="late-model",
+            ),
+            source_revision=1,
+        )
+    assert second.get_status(7) == "WAIT_SCORE"
+    assert second.cost_units == {7: 0}
+
+
 @pytest.mark.parametrize("late_decision", ["approved", "rejected"])
 def test_stale_review_decision_preserves_committed_reviewer_and_products(
     repositories, late_decision: Literal["approved", "rejected"],

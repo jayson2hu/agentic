@@ -4,12 +4,38 @@
 
 This repository implements the L2 service against the frozen contract:
 
-- input event: `content.analyzed {content_id}`
-- L1 access: `AnalysisProvider.get(content_id) -> BaseAnalysis`
+- input event: `content.analyzed {content_id, run_id, revision}`
+- L1 access: `AnalysisProvider.get_for_run(content_id, run_id) -> BaseAnalysis`
 - products: `content_vertical_scores`, `content_translations`, `content.completed`
 - request-time APIs: `recommend(user_id, vertical, limit)`, `companion(content_id, question)`
 
 Development is standalone. The default path uses `StubAnalysisProvider` fixtures and `FakeLLM`; it does not call real L1 or a real model.
+
+## Versioned Event Processing
+
+L2 accepts each newer L1 `revision` exactly once, reads the matching historical
+`run_id` from `l1_processing_runs`, reopens the content for scoring, and emits a
+separate `content.completed` event for that revision. A delayed older revision is
+ignored; an in-flight older task cannot write products after a newer revision is
+accepted.
+
+Bridge L1 Redis events into Arq:
+
+```bash
+L2_REDIS_URL=redis://127.0.0.1:6379/0 \
+L2_EVENT_QUEUE=codepick:l1:events \
+.venv/bin/python -m judgment_graph.scripts.consume_events
+```
+
+Run the worker with the same Redis and SQL configuration:
+
+```bash
+L2_REDIS_URL=redis://127.0.0.1:6379/0 \
+L2_DATABASE_URL=sqlite:////tmp/codepick/l2.db \
+L2_L1_DATABASE_URL=sqlite:////tmp/codepick/l1.db \
+L2_ANALYSIS_PROVIDER=sqlalchemy \
+.venv/bin/arq judgment_graph.workers.scoring.worker.WorkerSettings
+```
 
 ## M2 HTTP Service
 
@@ -98,13 +124,15 @@ The SQLAlchemy metadata and Alembic migration declare only L2-owned tables:
 - `judgment_outbox`
 
 Migration `20260912_0002` adds durable lifecycle/cost state and completion events.
+Migration `20260916_0003` adds accepted L1 run/revision state and versioned completion uniqueness.
 Completed products remain queryable after recreating the repository in another process.
 
 The default smoke path uses `InMemoryJudgmentRepository`. M1 adds persistent SQL
 status, costs and completion events alongside scores/translations; use the new
-Alembic revision when upgrading an existing L2 database. Completed, cancelled and
-review-pending duplicate tasks preserve their state across restarts; explicit
-version rescoring and completion-event delivery acknowledgements remain future work. Integration can switch to
+Alembic revisions when upgrading an existing L2 database. Completed, cancelled and
+review-pending duplicate tasks preserve their state across restarts; newer L1
+revisions explicitly rescore while stale events remain no-ops. Delivery of L2's own
+completion outbox to later asynchronous consumers remains future work. Integration can switch to
 `SqlAlchemyJudgmentRepository` without changing graph or L1 provider code.
 
 `verify_contracts` checks that only the allowed L2 table names are declared, no L3 imports
@@ -132,7 +160,8 @@ The integration script checks:
 
 - live Alembic upgrade/downgrade against PostgreSQL with pgvector
 - Redis connectivity for Arq runtime readiness
-- packaged Arq worker contract for `score(ctx, content_id)`
+- packaged Arq worker contract for legacy `score(ctx, content_id)` and versioned
+  `score(ctx, content_id, run_id, revision)`
 
 In CI, `.github/workflows/l2.yml` runs the same check with service containers. Override
 service endpoints with `L2_TEST_POSTGRES_HOST`, `L2_TEST_POSTGRES_PORT`,

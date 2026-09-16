@@ -81,6 +81,8 @@ content_judgment_state = Table(
     metadata,
     Column("content_id", BigInteger, primary_key=True, autoincrement=False),
     Column("status", String(16)),
+    Column("source_run_id", String(64)),
+    Column("source_revision", Integer, nullable=False, default=0, server_default="0"),
     Column("cost_units", Integer, nullable=False, default=0, server_default="0"),
     Column("updated_at", DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)),
 )
@@ -91,7 +93,14 @@ judgment_outbox = Table(
     Column("id", Integer, primary_key=True, autoincrement=True),
     Column("event_type", String(64), nullable=False),
     Column("content_id", BigInteger, nullable=False),
+    Column("source_run_id", String(64)),
+    Column("source_revision", Integer, nullable=False, default=0, server_default="0"),
     Column("payload", json_type(), nullable=False),
     Column("created_at", DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)),
-    UniqueConstraint("event_type", "content_id", name="uq_judgment_outbox_content_event"),
+    UniqueConstraint(
+        "event_type",
+        "content_id",
+        "source_revision",
+        name="uq_judgment_outbox_content_event_revision",
+    ),
 )

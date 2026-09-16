@@ -135,6 +135,41 @@ def test_missing_snapshot_row_raises(snapshot_database):
         SqlAlchemyAnalysisProvider(snapshot_database[0]).get(404)
 
 
+def test_historical_processing_run_can_be_read_by_run_id(snapshot_database):
+    engine, _table = snapshot_database
+    metadata = MetaData()
+    runs = Table(
+        "l1_processing_runs",
+        metadata,
+        Column("run_id", String, primary_key=True),
+        Column("content_id", String),
+        Column("input_snapshot", JSON),
+        Column("analysis", JSON),
+        Column("graph_version", String),
+        Column("content_hash", String),
+        Column("status", String),
+        Column("finished_at", DateTime(timezone=True)),
+    )
+    metadata.create_all(engine)
+    historical = snapshot_row()
+    historical["analysis"]["summary"] = "Historical run summary."
+    with engine.begin() as conn:
+        conn.execute(insert(runs).values(
+            run_id="run-historical",
+            content_id="101",
+            input_snapshot=historical["input_snapshot"],
+            analysis=historical["analysis"],
+            graph_version=historical["graph_version"],
+            content_hash=historical["content_hash"],
+            status="WAIT_SCORE",
+            finished_at=historical["updated_at"],
+        ))
+
+    result = SqlAlchemyAnalysisProvider(engine).get_for_run(101, "run-historical")
+
+    assert result.summary == "Historical run summary."
+
+
 def test_partial_snapshot_schema_does_not_fall_back_to_legacy():
     engine = create_engine("sqlite+pysqlite:///:memory:")
     metadata = MetaData()

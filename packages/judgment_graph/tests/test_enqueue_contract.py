@@ -44,6 +44,17 @@ async def test_enqueue_content_analyzed_helper() -> None:
 
 
 @pytest.mark.asyncio
+async def test_versioned_event_uses_run_specific_job_identity() -> None:
+    queue = FakeArqQueue()
+    payload = {"content_id": 1001, "run_id": "run-v2", "revision": 2}
+
+    assert await enqueue_content_analyzed(queue, "content.analyzed", payload)
+    assert queue.jobs == [
+        ("score", (1001, "run-v2", 2), {"_job_id": "score:1001:run-v2"})
+    ]
+
+
+@pytest.mark.asyncio
 async def test_enqueue_can_retry_after_redis_failure() -> None:
     queue = FakeArqQueue()
     queue.fail_next = True

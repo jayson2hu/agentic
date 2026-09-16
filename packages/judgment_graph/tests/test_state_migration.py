@@ -25,6 +25,10 @@ def test_incremental_migration_and_downgrade_preserve_existing_products(tmp_path
     command.stamp(config, "20260530_0001")
     command.upgrade(config, "head")
     assert NEW_TABLES <= set(inspect(engine).get_table_names())
+    state_columns = {column["name"] for column in inspect(engine).get_columns(
+        "content_judgment_state"
+    )}
+    assert {"source_run_id", "source_revision"} <= state_columns
     repo = SqlAlchemyJudgmentRepository(engine)
     repo.set_status(9, "WAIT_SCORE")
     repo.mark_completed(9)
@@ -53,6 +57,7 @@ def test_postgresql_incremental_sql_has_only_new_owned_tables():
     assert "content_id BIGSERIAL" not in sql
     assert "payload JSONB NOT NULL" in sql
     assert "UNIQUE (event_type, content_id)" in sql
+    assert "source_revision INTEGER DEFAULT '0' NOT NULL" in sql
     assert "CREATE TABLE verticals" not in sql
     assert "CREATE TABLE content_items" not in sql
     output.seek(0)

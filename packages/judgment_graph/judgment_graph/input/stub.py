@@ -18,3 +18,7 @@ class StubAnalysisProvider:
         except KeyError as exc:
             raise KeyError(f"stub base_analysis not found: {content_id}") from exc
 
+    def get_for_run(self, content_id: int, run_id: str) -> BaseAnalysis:
+        if not run_id.strip():
+            raise ValueError("run_id is required")
+        return self.get(content_id)

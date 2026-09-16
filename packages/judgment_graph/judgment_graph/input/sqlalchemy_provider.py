@@ -5,7 +5,7 @@ from collections.abc import Iterable, Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import Engine, MetaData, Table, create_engine, literal, select
+from sqlalchemy import Engine, MetaData, Table, create_engine, inspect, literal, select
 from sqlalchemy.engine import RowMapping
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -34,10 +34,15 @@ class SqlAlchemyAnalysisProvider:
         columns = set(self.content_base_analysis.c.keys())
         self.versioned_snapshot = bool({"schema_version", "input_snapshot"} & columns)
         self.content_items: Table | None = None
+        self.processing_runs: Table | None = None
         if self.versioned_snapshot:
             missing = SNAPSHOT_COLUMNS - columns
             if missing:
                 raise ValueError(f"incomplete L1 snapshot table contract: {sorted(missing)}")
+            if inspect(engine).has_table("l1_processing_runs"):
+                self.processing_runs = Table(
+                    "l1_processing_runs", self.metadata, autoload_with=engine
+                )
         else:
             # Legacy hand-built schemas still need the historical L0/L1 table join.
             self.content_items = Table("content_items", self.metadata, autoload_with=engine)
@@ -123,6 +128,33 @@ class SqlAlchemyAnalysisProvider:
             quotes=quotes,
             thumbnail=thumbnail,
         )
+
+    def get_for_run(self, content_id: int, run_id: str) -> BaseAnalysis:
+        requested_id = positive_content_id(content_id)
+        if not run_id.strip():
+            raise ValueError("run_id is required")
+        if self.processing_runs is None:
+            raise RuntimeError("L1 processing run history is unavailable")
+        query = select(self.processing_runs).where(
+            self.processing_runs.c.content_id == str(requested_id),
+            self.processing_runs.c.run_id == run_id,
+        )
+        with self.engine.connect() as conn:
+            row = conn.execute(query).mappings().one_or_none()
+        if row is None:
+            raise KeyError(f"L1 processing run not found: {requested_id}/{run_id}")
+        snapshot = {
+            "schema_version": 1,
+            "content_id": row["content_id"],
+            "input_snapshot": row["input_snapshot"],
+            "analysis": row["analysis"],
+            "graph_version": row["graph_version"],
+            "content_hash": row["content_hash"],
+            "run_id": row["run_id"],
+            "status": row["status"],
+            "updated_at": row["finished_at"],
+        }
+        return analysis_from_snapshot(snapshot, requested_id)
 
     def _versioned_row(self, content_id: int) -> RowMapping | None:
         query = select(self.content_base_analysis).where(

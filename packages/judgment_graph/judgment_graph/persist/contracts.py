@@ -12,17 +12,40 @@ from judgment_graph.contracts import (
 
 
 class JudgmentRepository(Protocol):
+    def begin_version(
+        self, content_id: int, source_run_id: str, source_revision: int
+    ) -> bool: ...
+
     def get_status(self, content_id: int) -> ContentStatus | None: ...
 
-    def set_status(self, content_id: int, status: ContentStatus) -> None: ...
+    def set_status(
+        self,
+        content_id: int,
+        status: ContentStatus,
+        *,
+        source_revision: int | None = None,
+    ) -> None: ...
 
-    def persist_score(self, score: VerticalScore) -> None: ...
+    def persist_score(
+        self, score: VerticalScore, *, source_revision: int | None = None
+    ) -> None: ...
 
-    def persist_translation(self, translation: Translation) -> None: ...
+    def persist_translation(
+        self, translation: Translation, *, source_revision: int | None = None
+    ) -> None: ...
 
-    def enqueue_review(self, content_id: int, vertical_code: str, reason: str) -> ReviewItem: ...
+    def enqueue_review(
+        self,
+        content_id: int,
+        vertical_code: str,
+        reason: str,
+        *,
+        source_revision: int | None = None,
+    ) -> ReviewItem: ...
 
-    def mark_completed(self, content_id: int) -> None: ...
+    def mark_completed(
+        self, content_id: int, *, source_revision: int | None = None
+    ) -> None: ...
 
     def decide_review(
         self,
@@ -37,4 +60,3 @@ class JudgmentRepository(Protocol):
     def reprocess_needed(self, vertical: str, rubric_version: str) -> list[int]: ...
 
     def as_content_ref(self, score: VerticalScore, rank_score: float) -> ContentRef: ...
-
