@@ -4,7 +4,7 @@ from datetime import UTC, datetime
 
 from fastapi.testclient import TestClient
 from judgment_graph.contracts import DIMENSIONS, Translation, VerticalScore
-from judgment_graph.http_api import ContentReadService, create_app
+from judgment_graph.http_api import ContentDetail, ContentReadService, create_app
 from judgment_graph.input.sqlalchemy_provider import SqlAlchemyAnalysisProvider
 from judgment_graph.persist.sqlalchemy_repository import SqlAlchemyJudgmentRepository
 from sqlalchemy import (
@@ -118,6 +118,11 @@ def test_http_content_list_detail_recommend_and_companion(tmp_path) -> None:
     assert page.status_code == 200
     assert page.json()["total"] == 1
     assert page.json()["items"][0]["title"] == "M1 durable article"
+    searched = api.get("/content", params={"q": "durable", "limit": 1})
+    assert searched.status_code == 200
+    assert searched.json()["total"] == 1
+    assert searched.json()["next_cursor"] is None
+    assert api.get("/content", params={"q": "absent"}).json()["total"] == 0
 
     detail = api.get("/content/1")
     assert detail.status_code == 200
@@ -160,3 +165,76 @@ def test_http_optional_bearer_auth(tmp_path, monkeypatch) -> None:
     assert api.get(
         "/content", headers={"Authorization": "Bearer test-key"}
     ).status_code == 200
+
+
+def test_content_search_filters_before_pagination() -> None:
+    class SearchRepository:
+        def completed_scores(self, vertical: str | None = None) -> list[VerticalScore]:
+            del vertical
+            return [
+                VerticalScore(
+                    content_id=1,
+                    vertical_code="ai-coding",
+                    relevance=90,
+                    dim_scores={dimension: 90 for dimension in DIMENSIONS},
+                    vertical_tags=[],
+                    quality_score=99,
+                    reviewed=False,
+                    rubric_version="v1",
+                    model="fake",
+                ),
+                VerticalScore(
+                    content_id=2,
+                    vertical_code="ai-coding",
+                    relevance=80,
+                    dim_scores={dimension: 80 for dimension in DIMENSIONS},
+                    vertical_tags=[],
+                    quality_score=80,
+                    reviewed=False,
+                    rubric_version="v1",
+                    model="fake",
+                ),
+            ]
+
+    service = ContentReadService(SearchRepository(), object())  # type: ignore[arg-type]
+    details = {
+        1: {
+            "id": "1",
+            "title": "High score unrelated",
+            "summary": "No matching phrase",
+            "quality": 99,
+        },
+        2: {
+            "id": "2",
+            "title": "Needle article",
+            "summary": "The requested result",
+            "quality": 80,
+        },
+    }
+
+    def detail(content_id: int, _score: VerticalScore) -> ContentDetail:
+        item = details[content_id]
+        return ContentDetail(
+            id=item["id"],
+            title=item["title"],
+            source="Test",
+            url=f"https://example.test/{content_id}",
+            vertical="ai-coding",
+            published_at=datetime(2026, 9, content_id, tzinfo=UTC),
+            summary=item["summary"],
+            scores={"quality": item["quality"]},
+            base_analysis={},
+        )
+
+    service._detail = detail  # type: ignore[method-assign]
+    page = service.list_content(
+        vertical=None,
+        status="COMPLETED",
+        cursor=None,
+        limit=1,
+        sort="score",
+        query=" needle ",
+    )
+    assert [item.id for item in page.items] == ["2"]
+    assert page.total == 1
+    assert page.next_cursor is None

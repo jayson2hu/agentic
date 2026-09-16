@@ -40,6 +40,18 @@ L2_HTTP_PORT=8200 \
 `L2_API_KEY`；跨域场景可设置逗号分隔的 `L2_CORS_ORIGINS`。本机联调应保持
 `L2_HTTP_HOST=127.0.0.1`，并让 worker 与 HTTP 使用相同的 `L2_DATABASE_URL`。
 
+列表接口支持最长 200 字符的 `q`，在排序和游标分页前对标题、摘要执行不区分
+大小写的包含搜索。例如：
+
+```sh
+curl --get http://127.0.0.1:8200/content \
+  --data-urlencode 'q=postgres' \
+  --data 'limit=10'
+```
+
+返回的 `total` 和 `next_cursor` 都基于过滤后的全集。非法游标或排序返回 400，
+不存在的详情返回 404，配置缺失、存储故障和 L1 快照缺失分别保持独立错误码。
+
 版本消息模式还需启动 Redis bridge 和 Arq worker：
 
 ```sh

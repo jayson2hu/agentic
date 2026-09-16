@@ -46,6 +46,11 @@ L2 now exposes the persisted M1 results to L3 through FastAPI:
 - `GET /recommend`
 - `GET /companion`
 
+`GET /content` accepts an optional `q` parameter of at most 200 characters. It
+matches title or summary case-insensitively before sorting and cursor pagination,
+so `total` and `next_cursor` describe the filtered result set rather than a
+single already-paginated page.
+
 The HTTP process and scoring worker share `L2_DATABASE_URL`; document fields are
 read from the versioned L1 snapshot configured by `L2_L1_DATABASE_URL`. Start it
 locally with independent SQLite databases:

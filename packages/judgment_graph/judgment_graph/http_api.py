@@ -80,12 +80,21 @@ class ContentReadService:
         cursor: str | None,
         limit: int,
         sort: str,
+        query: str | None = None,
     ) -> ContentPage:
         if status != "COMPLETED":
             return ContentPage(items=[], total=0)
         offset = self._offset(cursor)
         scores = self._best_scores(vertical)
         details = [self._detail(score.content_id, score) for score in scores]
+        normalized_query = (query or "").strip().casefold()
+        if normalized_query:
+            details = [
+                item
+                for item in details
+                if normalized_query in item.title.casefold()
+                or normalized_query in item.summary.casefold()
+            ]
         if sort == "score":
             details.sort(key=lambda item: (-item.scores.get("quality", 0), int(item.id)))
         elif sort == "published_at":
@@ -296,6 +305,7 @@ def create_app(service: ContentReadService | None = None) -> FastAPI:
         cursor: str | None = None,
         limit: int = Query(default=20, ge=1, le=50),
         sort: str = "published_at",
+        q: str | None = Query(default=None, max_length=200),
     ) -> dict[str, Any]:
         current = resolve_service()
         page = execute(
@@ -305,6 +315,7 @@ def create_app(service: ContentReadService | None = None) -> FastAPI:
                 cursor=cursor,
                 limit=limit,
                 sort=sort,
+                query=q,
             )
         )
         return page.model_dump(mode="json")
