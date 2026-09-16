@@ -1,5 +1,4 @@
 import pytest
-
 from judgment_graph.scripts.integration_check import (
     check_postgres,
     check_worker_contract,

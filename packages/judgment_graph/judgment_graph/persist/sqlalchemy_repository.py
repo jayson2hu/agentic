@@ -9,13 +9,13 @@ from sqlalchemy.engine import RowMapping
 from judgment_graph.contracts import (
     ContentRef,
     ContentStatus,
+    Lens,
     OutboxEvent,
     ReviewItem,
     Translation,
     VerticalScore,
 )
 from judgment_graph.persist import models
-from judgment_graph.contracts import Lens
 
 
 def create_sqlalchemy_engine(url: str) -> Engine:

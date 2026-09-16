@@ -3,12 +3,11 @@ from __future__ import annotations
 from collections.abc import Iterator
 
 import pytest
-from sqlalchemy import JSON, Column, Integer, MetaData, String, Table, create_engine, event, insert
-from sqlalchemy.engine import Engine
-
 from judgment_graph.input.factory import create_analysis_provider
 from judgment_graph.input.sqlalchemy_provider import SqlAlchemyAnalysisProvider
 from judgment_graph.input.stub import StubAnalysisProvider
+from sqlalchemy import JSON, Column, Integer, MetaData, String, Table, create_engine, event, insert
+from sqlalchemy.engine import Engine
 
 
 @pytest.fixture

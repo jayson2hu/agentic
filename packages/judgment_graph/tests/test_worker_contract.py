@@ -3,7 +3,6 @@ from pathlib import Path
 
 import pytest
 
-
 WORKER_PATH = Path(__file__).resolve().parents[1] / "judgment_graph" / "workers" / "scoring" / "worker.py"
 
 

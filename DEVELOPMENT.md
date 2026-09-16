@@ -26,6 +26,13 @@ python -m alembic -c alembic.ini upgrade head --sql
 
 当前默认使用 StubAnalysisProvider 和 FakeLLM。真实 L1 可通过 L2_ANALYSIS_PROVIDER=sqlalchemy 和 L2_L1_DATABASE_URL 配置。真实模型和完整集成要求见 README 与 docs。上面的 Alembic 命令只生成迁移 SQL，不连接或修改数据库。
 
+严格本地集成检查使用仅绑定 localhost 的测试服务：
+
+```sh
+docker compose -f docker-compose.integration.yml up -d --wait
+L2_INTEGRATION_STRICT=1 python -m judgment_graph.scripts.integration_check
+```
+
 ## 交接范围
 
 提交包括当前源码、测试、迁移、配置示例与项目文档。依赖目录、构建产物、本地数据库、采集运行数据、日志和凭据不随仓库分发，需要在新环境重新安装或配置。

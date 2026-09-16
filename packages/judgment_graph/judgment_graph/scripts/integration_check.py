@@ -12,8 +12,8 @@ from alembic.config import Config
 from sqlalchemy import create_engine, inspect, text
 
 from judgment_graph.input.stub import StubAnalysisProvider
-from judgment_graph.scripts.seed_verticals import seed_ai_coding_lens
 from judgment_graph.persist.sqlalchemy_repository import SqlAlchemyJudgmentRepository
+from judgment_graph.scripts.seed_verticals import seed_ai_coding_lens
 from judgment_graph.workers.scoring.worker import score
 
 EXPECTED_TABLES = {
@@ -52,7 +52,11 @@ def docker_engine_available() -> bool:
     except (OSError, subprocess.TimeoutExpired):
         return False
     output = f"{result.stdout}\n{result.stderr}".lower()
-    return result.returncode == 0 and bool(result.stdout.strip()) and "error during connect" not in output
+    return (
+        result.returncode == 0
+        and bool(result.stdout.strip())
+        and "error during connect" not in output
+    )
 
 
 def postgres_url() -> str:
@@ -126,7 +130,7 @@ async def check_redis() -> IntegrationResult:
                 f"{endpoint} is not reachable and Docker engine is not running",
             )
         return IntegrationResult("redis", "SKIP", f"{endpoint} is not reachable")
-    from arq.connections import RedisSettings, create_pool  # type: ignore[import-not-found]
+    from arq.connections import RedisSettings, create_pool
 
     settings = RedisSettings(host=host, port=port, database=0)
     redis = await create_pool(settings)
@@ -142,7 +146,9 @@ async def check_redis() -> IntegrationResult:
 async def check_worker_contract() -> IntegrationResult:
     await score({}, 1001)
     StubAnalysisProvider().get(1001)
-    return IntegrationResult("arq-worker", "PASS", "score(ctx, content_id) consumed fixture content")
+    return IntegrationResult(
+        "arq-worker", "PASS", "score(ctx, content_id) consumed fixture content"
+    )
 
 
 async def run_checks() -> list[IntegrationResult]:

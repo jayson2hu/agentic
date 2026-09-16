@@ -1,10 +1,9 @@
-from sqlalchemy import create_engine
-
 from judgment_graph.contracts import Translation, VerticalScore
 from judgment_graph.graph.recommend import recommend
 from judgment_graph.persist import models
 from judgment_graph.persist.sqlalchemy_repository import SqlAlchemyJudgmentRepository
 from judgment_graph.scripts.seed_verticals import load_ai_coding_seed, seed_ai_coding_lens
+from sqlalchemy import create_engine
 
 
 def score(content_id: int = 7) -> VerticalScore:

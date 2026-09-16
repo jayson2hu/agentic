@@ -2,7 +2,13 @@ from __future__ import annotations
 
 from typing import Literal, Protocol
 
-from judgment_graph.contracts import ContentRef, ContentStatus, ReviewItem, Translation, VerticalScore
+from judgment_graph.contracts import (
+    ContentRef,
+    ContentStatus,
+    ReviewItem,
+    Translation,
+    VerticalScore,
+)
 
 
 class JudgmentRepository(Protocol):

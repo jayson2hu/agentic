@@ -3,7 +3,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[4]
 PACKAGE_ROOT = ROOT / "packages" / "judgment_graph"
 

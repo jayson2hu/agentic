@@ -1,5 +1,4 @@
 import pytest
-
 from judgment_graph.workers.scoring.enqueue import ScoreEnqueuer, enqueue_content_analyzed
 
 

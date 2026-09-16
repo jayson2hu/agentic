@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import ClassVar
+
 from judgment_graph.events.consume import EventConsumer
 from judgment_graph.input.factory import create_analysis_provider
 from judgment_graph.lens.loader import FileLensLoader
@@ -16,4 +18,4 @@ async def score(ctx: dict[str, object], content_id: int) -> None:
 
 
 class WorkerSettings:
-    functions = [score]
+    functions: ClassVar[list[object]] = [score]
