@@ -124,16 +124,35 @@ The SQLAlchemy metadata and Alembic migration declare only L2-owned tables:
 - `judgment_outbox`
 
 Migration `20260912_0002` adds durable lifecycle/cost state and completion events.
-Migration `20260916_0003` adds accepted L1 run/revision state and versioned completion uniqueness.
-Completed products remain queryable after recreating the repository in another process.
+Migration `20260916_0003` adds accepted L1 run/revision state and versioned completion
+uniqueness. Migration `20260916_0004` adds stable completion event IDs, delivery
+attempts, sent/ACK timestamps, errors, and persistent dead-letter state. Completed
+products and delivery lifecycle remain queryable after recreating the repository in
+another process.
 
 The default smoke path uses `InMemoryJudgmentRepository`. M1 adds persistent SQL
 status, costs and completion events alongside scores/translations; use the new
 Alembic revisions when upgrading an existing L2 database. Completed, cancelled and
 review-pending duplicate tasks preserve their state across restarts; newer L1
-revisions explicitly rescore while stale events remain no-ops. Delivery of L2's own
-completion outbox to later asynchronous consumers remains future work. Integration can switch to
+revisions explicitly rescore while stale events remain no-ops. The completion relay
+claims pending rows, publishes stable envelopes to Redis, retries publish failures or
+missing ACKs, and dead-letters exhausted events. Integration can switch to
 `SqlAlchemyJudgmentRepository` without changing graph or L1 provider code.
+
+Run one relay cycle with:
+
+```bash
+L2_DATABASE_URL=postgresql+psycopg://... \
+L2_REDIS_URL=redis://127.0.0.1:6379/0 \
+python -m judgment_graph.scripts.relay_completed --once
+```
+
+The default event queue is `codepick:l2:events`; after durably accepting an envelope,
+a downstream consumer must `RPUSH` its `idempotency_key` to
+`codepick:l2:events:acks`. Configure names, ACK timeout, attempts, and batch size with
+`L2_COMPLETION_QUEUE`, `L2_COMPLETION_ACK_QUEUE`,
+`L2_COMPLETION_ACK_TIMEOUT_SEC`, `L2_COMPLETION_MAX_ATTEMPTS`, and
+`L2_COMPLETION_BATCH_SIZE`. No production downstream consumer is enabled by default.
 
 `verify_contracts` checks that only the allowed L2 table names are declared, no L3 imports
 exist in `judgment_graph`, and every E0-E9 feature has implementation and self-test

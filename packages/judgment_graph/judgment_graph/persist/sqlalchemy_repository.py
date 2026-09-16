@@ -19,6 +19,7 @@ from judgment_graph.contracts import (
     VerticalScore,
 )
 from judgment_graph.persist import models
+from judgment_graph.persist.delivery import completion_event_id
 
 
 def create_sqlalchemy_engine(url: str) -> Engine:
@@ -371,6 +372,9 @@ class SqlAlchemyJudgmentRepository:
             payload["source_run_id"] = accepted_run_id
         table = models.judgment_outbox
         values = {
+            "event_id": completion_event_id(
+                "content.completed", content_id, accepted_revision
+            ),
             "event_type": "content.completed",
             "content_id": content_id,
             "source_run_id": accepted_run_id,

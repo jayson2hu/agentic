@@ -1,17 +1,26 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import socket
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
 from alembic import command
 from alembic.config import Config
+from redis import Redis
 from sqlalchemy import create_engine, inspect, text
 
 from judgment_graph.input.stub import StubAnalysisProvider
+from judgment_graph.persist.delivery import (
+    CompletionOutboxRelay,
+    CompletionOutboxStore,
+    RedisCompletionTransport,
+    RedisLike,
+)
 from judgment_graph.persist.sqlalchemy_repository import SqlAlchemyJudgmentRepository
 from judgment_graph.scripts.seed_verticals import seed_ai_coding_lens
 from judgment_graph.workers.scoring.worker import score
@@ -145,6 +154,70 @@ async def check_redis() -> IntegrationResult:
     return IntegrationResult("redis", "PASS", "redis ping succeeded")
 
 
+def check_completion_relay() -> IntegrationResult:
+    pg_host, pg_port = postgres_host_port()
+    redis_host, redis_port = redis_host_port()
+    if not tcp_open(pg_host, pg_port) or not tcp_open(redis_host, redis_port):
+        return IntegrationResult(
+            "completion-relay",
+            "SKIP",
+            "PostgreSQL and Redis test endpoints must both be reachable",
+        )
+    url = postgres_url()
+    config = Config(str(ROOT / "alembic.ini"))
+    config.set_main_option("script_location", str(ROOT / "db" / "alembic"))
+    config.set_main_option("sqlalchemy.url", url)
+    command.upgrade(config, "head")
+    engine = create_engine(url, future=True)
+    queue = "codepick:test:l2:completion"
+    ack_queue = f"{queue}:acks"
+    event_id = "content.completed:900001-r0"
+    client = Redis.from_url(redis_url(), decode_responses=True)
+    try:
+        client.delete(queue, ack_queue)
+        repository = SqlAlchemyJudgmentRepository(engine)
+        repository.set_status(900001, "WAIT_SCORE")
+        repository.mark_completed(900001)
+        transport = RedisCompletionTransport(
+            cast(RedisLike, client),
+            queue_name=queue,
+            ack_queue_name=ack_queue,
+        )
+        relay = CompletionOutboxRelay(
+            CompletionOutboxStore(engine), transport, transport
+        )
+        first = relay.relay_once()
+        raw = client.lpop(queue)
+        if raw is None:
+            raise AssertionError("completion event was not published to Redis")
+        if not isinstance(raw, str):
+            raise TypeError("completion event must be a text Redis payload")
+        envelope = json.loads(raw)
+        if envelope.get("idempotency_key") != event_id:
+            raise AssertionError(f"unexpected completion envelope: {envelope!r}")
+        client.rpush(ack_queue, event_id)
+        second = relay.relay_once()
+        delivered = CompletionOutboxStore(engine).get(event_id)
+        if (
+            first.published != 1
+            or second.acknowledged != 1
+            or delivered is None
+            or delivered.acked_at is None
+            or delivered.dead_lettered_at is not None
+        ):
+            raise AssertionError("completion event did not reach acknowledged state")
+    finally:
+        client.delete(queue, ack_queue)
+        client.close()
+        engine.dispose()
+        command.downgrade(config, "base")
+    return IntegrationResult(
+        "completion-relay",
+        "PASS",
+        "PostgreSQL outbox -> Redis -> ACK persisted",
+    )
+
+
 async def check_worker_contract() -> IntegrationResult:
     await score({}, 1001)
     StubAnalysisProvider().get(1001)
@@ -154,7 +227,12 @@ async def check_worker_contract() -> IntegrationResult:
 
 
 async def run_checks() -> list[IntegrationResult]:
-    results = [check_postgres(), await check_redis(), await check_worker_contract()]
+    results = [
+        check_postgres(),
+        await check_redis(),
+        await check_worker_contract(),
+        check_completion_relay(),
+    ]
     return results
 
 

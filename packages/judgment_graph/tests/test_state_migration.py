@@ -4,7 +4,7 @@ from alembic import command
 from alembic.config import Config
 from judgment_graph.persist import models
 from judgment_graph.persist.sqlalchemy_repository import SqlAlchemyJudgmentRepository
-from sqlalchemy import create_engine, insert, inspect, select
+from sqlalchemy import create_engine, insert, inspect, select, text
 
 ROOT = Path(__file__).resolve().parents[3]
 NEW_TABLES = {"content_judgment_state", "judgment_outbox"}
@@ -29,6 +29,17 @@ def test_incremental_migration_and_downgrade_preserve_existing_products(tmp_path
         "content_judgment_state"
     )}
     assert {"source_run_id", "source_revision"} <= state_columns
+    outbox_columns = {
+        column["name"] for column in inspect(engine).get_columns("judgment_outbox")
+    }
+    assert {
+        "event_id",
+        "attempt_count",
+        "sent_at",
+        "acked_at",
+        "dead_lettered_at",
+        "last_error",
+    } <= outbox_columns
     repo = SqlAlchemyJudgmentRepository(engine)
     repo.set_status(9, "WAIT_SCORE")
     repo.mark_completed(9)
@@ -67,3 +78,48 @@ def test_postgresql_incremental_sql_has_only_new_owned_tables():
     assert "DROP TABLE judgment_outbox" in sql
     assert "DROP TABLE content_judgment_state" in sql
     assert "DROP TABLE content_vertical_scores" not in sql
+
+
+def test_delivery_migration_backfills_stable_event_id(tmp_path: Path) -> None:
+    url = f"sqlite+pysqlite:///{tmp_path / 'delivery-migration.db'}"
+    config = Config(str(ROOT / "alembic.ini"))
+    config.set_main_option("script_location", str(ROOT / "db" / "alembic"))
+    config.set_main_option("sqlalchemy.url", url)
+    engine = create_engine(url)
+    old_tables = [
+        table for name, table in models.metadata.tables.items() if name not in NEW_TABLES
+    ]
+    models.metadata.create_all(engine, tables=old_tables)
+    command.stamp(config, "20260530_0001")
+    command.upgrade(config, "20260916_0003")
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "INSERT INTO judgment_outbox "
+                "(event_type, content_id, source_revision, payload, created_at) "
+                "VALUES (:event_type, :content_id, :source_revision, :payload, :created_at)"
+            ),
+            {
+                "event_type": "content.completed",
+                "content_id": 77,
+                "source_revision": 3,
+                "payload": '{"content_id": 77}',
+                "created_at": "2026-09-16 00:00:00",
+            },
+        )
+    command.upgrade(config, "head")
+    with engine.connect() as conn:
+        row = conn.execute(
+            text(
+                "SELECT event_id, attempt_count, sent_at, acked_at, "
+                "dead_lettered_at FROM judgment_outbox"
+            )
+        ).mappings().one()
+    assert row == {
+        "event_id": "content.completed:77-r3",
+        "attempt_count": 0,
+        "sent_at": None,
+        "acked_at": None,
+        "dead_lettered_at": None,
+    }
+    engine.dispose()

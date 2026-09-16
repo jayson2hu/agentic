@@ -54,8 +54,23 @@ L2_ANALYSIS_PROVIDER=sqlalchemy \
 .venv/bin/arq judgment_graph.workers.scoring.worker.WorkerSettings
 ```
 
-迁移到最新版本时必须包含 `20260916_0003`。该版本记录已接受的 L1
-`run_id/revision`，并阻止旧任务覆盖新评分。
+迁移到最新版本时必须包含 `20260916_0004`。`0003` 记录已接受的 L1
+`run_id/revision` 并阻止旧任务覆盖新评分；`0004` 为 L2 completion outbox
+增加稳定事件 ID、发送/ACK、重试与 dead-letter 状态。
+
+completion relay 与 worker/HTTP 共用 `L2_DATABASE_URL`：
+
+```sh
+L2_DATABASE_URL=sqlite:////tmp/codepick/l2.db \
+L2_REDIS_URL=redis://127.0.0.1:6379/0 \
+L2_COMPLETION_QUEUE=codepick:l2:events \
+L2_COMPLETION_ACK_QUEUE=codepick:l2:events:acks \
+.venv/bin/python -m judgment_graph.scripts.relay_completed
+```
+
+下游只有在事件已持久接收后，才把信封的 `idempotency_key` 写入 ACK 队列。
+无 ACK 的事件在超时后以相同 ID 重投，达到最大次数后保留在数据库 dead-letter
+状态。正式下游消费者和长期运行监控仍需另行接入。
 
 严格本地集成检查使用仅绑定 localhost 的测试服务：
 
