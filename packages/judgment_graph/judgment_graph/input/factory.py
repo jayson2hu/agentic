@@ -17,7 +17,8 @@ def create_analysis_provider(
     engine: Engine | None = None,
     database_url: str | None = None,
 ) -> AnalysisProvider:
-    provider_kind = (kind or os.getenv("L2_ANALYSIS_PROVIDER") or "stub").lower()
+    default_kind = "sqlalchemy" if os.getenv("L2_L1_DATABASE_URL") else "stub"
+    provider_kind = (kind or os.getenv("L2_ANALYSIS_PROVIDER") or default_kind).lower()
     if provider_kind == "stub":
         return StubAnalysisProvider(fixture_path=fixture_path)
     if provider_kind == "sqlalchemy":

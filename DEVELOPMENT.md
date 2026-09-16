@@ -26,6 +26,20 @@ python -m alembic -c alembic.ini upgrade head --sql
 
 当前默认使用 StubAnalysisProvider 和 FakeLLM。真实 L1 可通过 L2_ANALYSIS_PROVIDER=sqlalchemy 和 L2_L1_DATABASE_URL 配置。真实模型和完整集成要求见 README 与 docs。上面的 Alembic 命令只生成迁移 SQL，不连接或修改数据库。
 
+M2 HTTP 查询服务从 L2 与 L1 的持久数据库读取，不会回退到 fixture：
+
+```sh
+L2_DATABASE_URL=sqlite:////tmp/codepick-m2/l2.db \
+L2_L1_DATABASE_URL=sqlite:////tmp/codepick-m2/l1.db \
+L2_HTTP_HOST=127.0.0.1 \
+L2_HTTP_PORT=8200 \
+.venv/bin/python -m judgment_graph.scripts.run_http
+```
+
+该服务提供 `/content`、`/content/{id}`、`/recommend` 和 `/companion`。可选
+`L2_API_KEY`；跨域场景可设置逗号分隔的 `L2_CORS_ORIGINS`。本机联调应保持
+`L2_HTTP_HOST=127.0.0.1`，并让 worker 与 HTTP 使用相同的 `L2_DATABASE_URL`。
+
 严格本地集成检查使用仅绑定 localhost 的测试服务：
 
 ```sh

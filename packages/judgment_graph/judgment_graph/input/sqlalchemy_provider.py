@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable, Mapping, Sequence
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import Engine, MetaData, Table, create_engine, literal, select
@@ -9,6 +10,7 @@ from sqlalchemy.engine import RowMapping
 from sqlalchemy.sql.elements import ColumnElement
 
 from judgment_graph.contracts import BaseAnalysis
+from judgment_graph.input.provider import ContentDocument
 from judgment_graph.input.snapshot_contract import (
     SNAPSHOT_COLUMNS,
     analysis_from_snapshot,
@@ -43,11 +45,7 @@ class SqlAlchemyAnalysisProvider:
     def get(self, content_id: int) -> BaseAnalysis:
         if self.versioned_snapshot:
             requested_id = positive_content_id(content_id)
-            query = select(self.content_base_analysis).where(
-                self.content_base_analysis.c.content_id == str(requested_id)
-            )
-            with self.engine.connect() as conn:
-                snapshot_row = conn.execute(query).mappings().one_or_none()
+            snapshot_row = self._versioned_row(requested_id)
             if snapshot_row is None:
                 raise KeyError(f"L1 base_analysis not found: {requested_id}")
             return analysis_from_snapshot(dict(snapshot_row), requested_id)
@@ -95,6 +93,54 @@ class SqlAlchemyAnalysisProvider:
         if row["analysis_content_id"] is None:
             raise KeyError(f"L1 base_analysis not found: {content_id}")
         return self._base_analysis_from_row(row)
+
+    def get_document(self, content_id: int) -> ContentDocument:
+        requested_id = positive_content_id(content_id)
+        if not self.versioned_snapshot:
+            raise RuntimeError("L2 HTTP requires the versioned L1 snapshot contract")
+        row = self._versioned_row(requested_id)
+        if row is None:
+            raise KeyError(f"L1 base_analysis not found: {requested_id}")
+        analysis = analysis_from_snapshot(dict(row), requested_id)
+        snapshot = row["input_snapshot"]
+        analysis_payload = row["analysis"]
+        if not isinstance(snapshot, Mapping) or not isinstance(analysis_payload, Mapping):
+            raise TypeError("L1 snapshot payloads must be JSON objects")
+        source_url = snapshot.get("source_url")
+        if not isinstance(source_url, str) or not source_url.strip():
+            raise ValueError("input_snapshot.source_url is required by the L2 HTTP contract")
+        published_at = self._published_at(snapshot.get("published_at"), row["updated_at"])
+        metadata = snapshot.get("metadata")
+        metadata = metadata if isinstance(metadata, Mapping) else {}
+        thumbnail_value = metadata.get("thumbnail") or metadata.get("image_url")
+        thumbnail = str(thumbnail_value) if thumbnail_value else None
+        quotes_value = analysis_payload.get("quotes", [])
+        quotes = [str(item) for item in quotes_value] if isinstance(quotes_value, list) else []
+        return ContentDocument(
+            analysis=analysis,
+            url=source_url,
+            published_at=published_at,
+            quotes=quotes,
+            thumbnail=thumbnail,
+        )
+
+    def _versioned_row(self, content_id: int) -> RowMapping | None:
+        query = select(self.content_base_analysis).where(
+            self.content_base_analysis.c.content_id == str(content_id)
+        )
+        with self.engine.connect() as conn:
+            return conn.execute(query).mappings().one_or_none()
+
+    def _published_at(self, value: object, fallback: object) -> datetime:
+        if isinstance(value, datetime):
+            result = value
+        elif isinstance(value, str) and value.strip():
+            result = datetime.fromisoformat(value)
+        elif isinstance(fallback, datetime):
+            result = fallback
+        else:
+            raise ValueError("L1 snapshot published_at and updated_at are unavailable")
+        return result.replace(tzinfo=UTC) if result.tzinfo is None else result
 
     def _base_analysis_from_row(self, row: RowMapping) -> BaseAnalysis:
         fields = self._dict_value(row["fields"])

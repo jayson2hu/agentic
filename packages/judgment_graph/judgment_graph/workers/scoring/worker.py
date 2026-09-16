@@ -7,9 +7,9 @@ from judgment_graph.events.consume import EventConsumer
 from judgment_graph.input.factory import create_analysis_provider
 from judgment_graph.lens.loader import FileLensLoader
 from judgment_graph.llm import FakeLLM
-from judgment_graph.persist.repository import InMemoryJudgmentRepository
+from judgment_graph.runtime import create_judgment_repository
 
-repository = InMemoryJudgmentRepository()
+repository = create_judgment_repository()
 consumer = EventConsumer(create_analysis_provider(), FileLensLoader(), FakeLLM(), repository)
 
 

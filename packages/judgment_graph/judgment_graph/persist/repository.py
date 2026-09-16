@@ -97,11 +97,12 @@ class InMemoryJudgmentRepository:
         else:
             self.set_status(item.content_id, "CANCELLED")
 
-    def completed_scores(self, vertical: str) -> list[VerticalScore]:
+    def completed_scores(self, vertical: str | None = None) -> list[VerticalScore]:
         return [
             score
             for score in self.content_vertical_scores.values()
-            if score.vertical_code == vertical and self.statuses.get(score.content_id) == "COMPLETED"
+            if (vertical is None or score.vertical_code == vertical)
+            and self.statuses.get(score.content_id) == "COMPLETED"
         ]
 
     def reprocess_needed(self, vertical: str, rubric_version: str) -> list[int]:

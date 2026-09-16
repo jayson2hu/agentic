@@ -11,6 +11,33 @@ This repository implements the L2 service against the frozen contract:
 
 Development is standalone. The default path uses `StubAnalysisProvider` fixtures and `FakeLLM`; it does not call real L1 or a real model.
 
+## M2 HTTP Service
+
+L2 now exposes the persisted M1 results to L3 through FastAPI:
+
+- `GET /content`
+- `GET /content/{id}`
+- `GET /recommend`
+- `GET /companion`
+
+The HTTP process and scoring worker share `L2_DATABASE_URL`; document fields are
+read from the versioned L1 snapshot configured by `L2_L1_DATABASE_URL`. Start it
+locally with independent SQLite databases:
+
+```bash
+L2_DATABASE_URL=sqlite:////tmp/codepick-m2/l2.db \
+L2_L1_DATABASE_URL=sqlite:////tmp/codepick-m2/l1.db \
+L2_HTTP_HOST=127.0.0.1 \
+L2_HTTP_PORT=8200 \
+.venv/bin/python -m judgment_graph.scripts.run_http
+```
+
+`L2_API_KEY` optionally enables bearer authentication. `L2_CORS_ORIGINS` accepts
+a comma-separated allowlist; the local reader normally uses its same-origin proxy
+instead. Missing configuration returns 503 `configuration_error`, unavailable SQL
+storage returns retryable 503, a missing content ID returns 404, and a completed L2
+record whose L1 snapshot is missing returns 502 `upstream_data_error`.
+
 ## L1 Provider Switch
 
 The L1 boundary is selected by `judgment_graph.input.create_analysis_provider`.

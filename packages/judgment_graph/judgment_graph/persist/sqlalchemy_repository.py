@@ -286,12 +286,15 @@ class SqlAlchemyJudgmentRepository:
             else:
                 self._set_status(conn, int(row["content_id"]), "CANCELLED")
 
-    def completed_scores(self, vertical: str) -> list[VerticalScore]:
+    def completed_scores(self, vertical: str | None = None) -> list[VerticalScore]:
         scores = models.content_vertical_scores
         state = models.content_judgment_state
         query = select(scores).join(state, scores.c.content_id == state.c.content_id).where(
-            scores.c.vertical_code == vertical, state.c.status == "COMPLETED"
-        ).order_by(scores.c.content_id)
+            state.c.status == "COMPLETED"
+        )
+        if vertical is not None:
+            query = query.where(scores.c.vertical_code == vertical)
+        query = query.order_by(scores.c.content_id, scores.c.vertical_code)
         with self.engine.connect() as conn:
             return [self._score_from_row(row) for row in conn.execute(query).mappings()]
 
