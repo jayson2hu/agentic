@@ -15,7 +15,10 @@ def ai_coding_lens_path() -> Path:
 
 
 def load_ai_coding_seed() -> dict[str, object]:
-    return cast(dict[str, object], json.loads(ai_coding_lens_path().read_text(encoding="utf-8")))
+    raw = json.loads(ai_coding_lens_path().read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        raise TypeError("ai-coding lens seed must be a JSON object")
+    return cast(dict[str, object], raw)
 
 
 def seed_ai_coding_lens(repository: SqlAlchemyJudgmentRepository) -> None:
@@ -31,4 +34,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -54,7 +54,11 @@ def docker_engine_available() -> bool:
     except (OSError, subprocess.TimeoutExpired):
         return False
     output = f"{result.stdout}\n{result.stderr}".lower()
-    return result.returncode == 0 and bool(result.stdout.strip()) and "error during connect" not in output
+    return (
+        result.returncode == 0
+        and bool(result.stdout.strip())
+        and "error during connect" not in output
+    )
 
 
 def postgres_url() -> str:
@@ -144,7 +148,9 @@ async def check_redis() -> IntegrationResult:
 async def check_worker_contract() -> IntegrationResult:
     await score({}, 1001)
     StubAnalysisProvider().get(1001)
-    return IntegrationResult("arq-worker", "PASS", "score(ctx, content_id) consumed fixture content")
+    return IntegrationResult(
+        "arq-worker", "PASS", "score(ctx, content_id) consumed fixture content"
+    )
 
 
 async def run_checks() -> list[IntegrationResult]:
