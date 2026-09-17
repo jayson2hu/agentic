@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -8,6 +9,17 @@ class LLMClient(Protocol):
     def complete_json(self, task: str, payload: dict[str, Any]) -> dict[str, Any]: ...
 
     def stream_text(self, task: str, payload: dict[str, Any]) -> list[str]: ...
+
+
+def create_llm() -> LLMClient:
+    """An invalid mode must never silently return simulated output."""
+    mode = os.getenv("L2_PROCESSING_MODE", "fake")
+    if mode == "fake":
+        return FakeLLM()
+    if mode == "heuristic":
+        from judgment_graph.heuristic import HeuristicProvider
+        return HeuristicProvider()
+    raise ValueError("L2_PROCESSING_MODE must be fake or heuristic")
 
 
 @dataclass

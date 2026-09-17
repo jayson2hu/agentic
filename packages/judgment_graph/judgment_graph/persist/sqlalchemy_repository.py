@@ -125,6 +125,18 @@ class SqlAlchemyJudgmentRepository:
                     raise ConcurrentJudgmentUpdateError(
                         "a newer source revision was accepted concurrently"
                     )
+            # Products have content-level keys, so a newly accepted input invalidates
+            # every old vertical and translation in the same transaction as the state.
+            conn.execute(
+                delete(models.content_vertical_scores).where(
+                    models.content_vertical_scores.c.content_id == content_id
+                )
+            )
+            conn.execute(
+                delete(models.content_translations).where(
+                    models.content_translations.c.content_id == content_id
+                )
+            )
             conn.execute(
                 delete(models.review_queue).where(
                     models.review_queue.c.content_id == content_id,
@@ -240,6 +252,20 @@ class SqlAlchemyJudgmentRepository:
                     "a newer source revision is already active"
                 )
             conn.execute(insert(table).values(content_id=content_id, cost_units=1))
+
+    def get_source_version(self, content_id: int) -> tuple[str, int] | None:
+        table = models.content_judgment_state
+        with self.engine.connect() as conn:
+            row = conn.execute(
+                select(table.c.source_run_id, table.c.source_revision).where(
+                    table.c.content_id == content_id
+                )
+            ).one_or_none()
+        if row is None or (row.source_run_id is None and row.source_revision == 0):
+            return None
+        if not row.source_run_id or row.source_revision < 1:
+            raise ValueError("accepted source version is incomplete")
+        return str(row.source_run_id), int(row.source_revision)
 
     def get_status(self, content_id: int) -> ContentStatus | None:
         with self.engine.connect() as conn:

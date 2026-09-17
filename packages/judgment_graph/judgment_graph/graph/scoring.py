@@ -63,7 +63,7 @@ def score_content(analysis: BaseAnalysis, lens: Lens, llm: LLMClient) -> Scoring
         review_note=refined.get("note"),
         reflection=str(reflection["comment"]),
         rubric_version=lens.rubric_version,
-        model=str(lens.model_profile["standard"]),
+        model=str(getattr(llm, "model_name", lens.model_profile["standard"])),
     )
     return ScoringResult(score=score, skipped=False)
 

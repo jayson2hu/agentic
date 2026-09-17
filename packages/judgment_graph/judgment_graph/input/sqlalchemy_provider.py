@@ -106,6 +106,17 @@ class SqlAlchemyAnalysisProvider:
         row = self._versioned_row(requested_id)
         if row is None:
             raise KeyError(f"L1 base_analysis not found: {requested_id}")
+        return self._document_from_snapshot(dict(row), requested_id)
+
+    def get_document_for_run(self, content_id: int, run_id: str) -> ContentDocument:
+        requested_id = positive_content_id(content_id)
+        return self._document_from_snapshot(
+            self._snapshot_for_run(requested_id, run_id), requested_id
+        )
+
+    def _document_from_snapshot(
+        self, row: Mapping[str, Any], requested_id: int
+    ) -> ContentDocument:
         analysis = analysis_from_snapshot(dict(row), requested_id)
         snapshot = row["input_snapshot"]
         analysis_payload = row["analysis"]
@@ -114,23 +125,34 @@ class SqlAlchemyAnalysisProvider:
         source_url = snapshot.get("source_url")
         if not isinstance(source_url, str) or not source_url.strip():
             raise ValueError("input_snapshot.source_url is required by the L2 HTTP contract")
-        published_at = self._published_at(snapshot.get("published_at"), row["updated_at"])
+        published_at = self._published_at(snapshot.get("published_at"))
         metadata = snapshot.get("metadata")
         metadata = metadata if isinstance(metadata, Mapping) else {}
         thumbnail_value = metadata.get("thumbnail") or metadata.get("image_url")
         thumbnail = str(thumbnail_value) if thumbnail_value else None
         quotes_value = analysis_payload.get("quotes", [])
         quotes = [str(item) for item in quotes_value] if isinstance(quotes_value, list) else []
+        processing = metadata.get("processing")
+        processing = processing if isinstance(processing, Mapping) else {}
         return ContentDocument(
             analysis=analysis,
             url=source_url,
             published_at=published_at,
             quotes=quotes,
             thumbnail=thumbnail,
+            provenance={
+                "source_kind": metadata.get("source_kind", "unknown"),
+                "analysis_method": processing.get("method", "unknown"),
+            },
         )
 
     def get_for_run(self, content_id: int, run_id: str) -> BaseAnalysis:
         requested_id = positive_content_id(content_id)
+        return analysis_from_snapshot(
+            self._snapshot_for_run(requested_id, run_id), requested_id
+        )
+
+    def _snapshot_for_run(self, requested_id: int, run_id: str) -> dict[str, Any]:
         if not run_id.strip():
             raise ValueError("run_id is required")
         if self.processing_runs is None:
@@ -143,7 +165,7 @@ class SqlAlchemyAnalysisProvider:
             row = conn.execute(query).mappings().one_or_none()
         if row is None:
             raise KeyError(f"L1 processing run not found: {requested_id}/{run_id}")
-        snapshot = {
+        return {
             "schema_version": 1,
             "content_id": row["content_id"],
             "input_snapshot": row["input_snapshot"],
@@ -154,8 +176,6 @@ class SqlAlchemyAnalysisProvider:
             "status": row["status"],
             "updated_at": row["finished_at"],
         }
-        return analysis_from_snapshot(snapshot, requested_id)
-
     def _versioned_row(self, content_id: int) -> RowMapping | None:
         query = select(self.content_base_analysis).where(
             self.content_base_analysis.c.content_id == str(content_id)
@@ -163,15 +183,15 @@ class SqlAlchemyAnalysisProvider:
         with self.engine.connect() as conn:
             return conn.execute(query).mappings().one_or_none()
 
-    def _published_at(self, value: object, fallback: object) -> datetime:
+    def _published_at(self, value: object) -> datetime | None:
+        if value is None or (isinstance(value, str) and not value.strip()):
+            return None
         if isinstance(value, datetime):
             result = value
-        elif isinstance(value, str) and value.strip():
+        elif isinstance(value, str):
             result = datetime.fromisoformat(value)
-        elif isinstance(fallback, datetime):
-            result = fallback
         else:
-            raise ValueError("L1 snapshot published_at and updated_at are unavailable")
+            raise TypeError("L1 snapshot published_at must be an ISO timestamp or null")
         return result.replace(tzinfo=UTC) if result.tzinfo is None else result
 
     def _base_analysis_from_row(self, row: RowMapping) -> BaseAnalysis:

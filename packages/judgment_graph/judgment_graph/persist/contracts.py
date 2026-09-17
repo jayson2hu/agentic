@@ -18,6 +18,8 @@ class JudgmentRepository(Protocol):
 
     def get_status(self, content_id: int) -> ContentStatus | None: ...
 
+    def get_source_version(self, content_id: int) -> tuple[str, int] | None: ...
+
     def set_status(
         self,
         content_id: int,

@@ -86,7 +86,7 @@ def build_scoring_graph() -> Any:
                 review_note=refined.get("note"),
                 reflection=str(state["reflection"]["comment"]),
                 rubric_version=lens.rubric_version,
-                model=str(lens.model_profile["standard"]),
+                model=str(getattr(state["llm"], "model_name", lens.model_profile["standard"])),
             )
         }
 

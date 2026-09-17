@@ -27,11 +27,13 @@ def translate_content(
         content_id=analysis.content_id,
         lang=lang,
         fields={key: str(value) for key, value in translated["fields"].items()},
-        model="fake-l2-model",
+        model=str(getattr(llm, "model_name", "unknown")),
         terms={str(k): str(v) for k, v in terms.items()},
     )
 
 
 def translate_bilingual(analysis: BaseAnalysis, llm: LLMClient) -> list[Translation]:
+    if not getattr(llm, "supports_translation", True):
+        return []
     return [translate_content(analysis, llm, "zh"), translate_content(analysis, llm, "en")]
 

@@ -44,6 +44,16 @@ class InMemoryJudgmentRepository:
         self.source_revisions[content_id] = source_revision
         self.statuses[content_id] = "WAIT_SCORE"
         self.cost_units[content_id] = 0
+        self.content_vertical_scores = {
+            key: score
+            for key, score in self.content_vertical_scores.items()
+            if score.content_id != content_id
+        }
+        self.content_translations = {
+            key: translation
+            for key, translation in self.content_translations.items()
+            if translation.content_id != content_id
+        }
         self.review_queue = {
             key: item
             for key, item in self.review_queue.items()
@@ -60,6 +70,15 @@ class InMemoryJudgmentRepository:
 
     def get_status(self, content_id: int) -> ContentStatus | None:
         return self.statuses.get(content_id)
+
+    def get_source_version(self, content_id: int) -> tuple[str, int] | None:
+        run_id = self.source_runs.get(content_id)
+        revision = self.source_revisions.get(content_id, 0)
+        if run_id is None and revision == 0:
+            return None
+        if not run_id or revision < 1:
+            raise ValueError("accepted source version is incomplete")
+        return run_id, revision
 
     def set_status(
         self,

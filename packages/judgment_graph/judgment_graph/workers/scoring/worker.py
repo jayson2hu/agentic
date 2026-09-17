@@ -9,11 +9,11 @@ from arq.connections import RedisSettings
 from judgment_graph.events.consume import EventConsumer
 from judgment_graph.input.factory import create_analysis_provider
 from judgment_graph.lens.loader import FileLensLoader
-from judgment_graph.llm import FakeLLM
+from judgment_graph.llm import create_llm
 from judgment_graph.runtime import create_judgment_repository
 
 repository = create_judgment_repository()
-consumer = EventConsumer(create_analysis_provider(), FileLensLoader(), FakeLLM(), repository)
+consumer = EventConsumer(create_analysis_provider(), FileLensLoader(), create_llm(), repository)
 
 
 async def score(

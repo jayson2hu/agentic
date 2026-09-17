@@ -11,6 +11,14 @@ This repository implements the L2 service against the frozen contract:
 
 Development is standalone. The default path uses `StubAnalysisProvider` fixtures and `FakeLLM`; it does not call real L1 or a real model.
 
+## Real-source offline preview (2026-09-17)
+
+[Implementation and acceptance](docs/2026-09-17-real-content-preview.md) · [Version-consistent reads](docs/2026-09-17-versioned-read-consistency.md) · [Four-service private preview](../codepick-docs/REAL_CONTENT_PREVIEW.md)
+
+`L2_PROCESSING_MODE=heuristic` explicitly selects offline reading-priority rules, not a real model. The default remains `fake` for existing independent tests. Both the worker and HTTP service use the same factory. Real-source preview preparation uses `judgment_graph.scripts.prepare_preview` with separate explicit L1/L2 SQLite paths; it refuses mixed model/translation artifacts. No synthetic translations are produced in heuristic mode.
+
+Responses include language, estimated reading time, tags and processing provenance. Missing publication dates remain null. API `/` redirects to `/docs`. HTTP reads use the accepted historical L1 run and reject a version change during the read with retryable `503 content_version_changed`.
+
 ## Versioned Event Processing
 
 L2 accepts each newer L1 `revision` exactly once, reads the matching historical

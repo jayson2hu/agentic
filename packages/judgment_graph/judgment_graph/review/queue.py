@@ -12,6 +12,12 @@ def route_review(
     exposure_threshold: int = 100_000,
     source_revision: int | None = None,
 ) -> None:
+    if score.model == "heuristic-v1" and min(score.quality_score, score.relevance) <= 80:
+        repository.enqueue_review(
+            score.content_id, score.vertical_code, "heuristic_requires_review",
+            source_revision=source_revision,
+        )
+        return
     border_distance = min(abs(score.quality_score - 70), abs(score.relevance - 70))
     if border_distance <= lowconf_band:
         repository.enqueue_review(
